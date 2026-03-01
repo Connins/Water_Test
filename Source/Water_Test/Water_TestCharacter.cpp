@@ -11,9 +11,12 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Water_Test.h"
+#include "BoatNetworked.h"
 
 AWater_TestCharacter::AWater_TestCharacter()
 {
+	PrimaryActorTick.bCanEverTick = true;
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 		
@@ -45,9 +48,14 @@ AWater_TestCharacter::AWater_TestCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
-
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+	
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationRoll = false;
+	bUseControllerRotationYaw = true;
+
+	GetCharacterMovement()->bIgnoreBaseRotation = true;
 }
 
 void AWater_TestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -130,4 +138,46 @@ void AWater_TestCharacter::DoJumpEnd()
 {
 	// signal the character to stop jumping
 	StopJumping();
+}
+
+// void AWater_TestCharacter::Tick(float DeltaTime)
+// {
+// 	Super::Tick(DeltaTime);
+//
+// 	AActor* BaseActor = APawn::GetMovementBaseActor(this);
+//
+// 	if (BaseActor && BaseActor->IsA(ABoatNetworked::StaticClass()))
+// 	{
+// 		if (GetAttachParentActor() != BaseActor)
+// 		{
+// 			AttachToActor(BaseActor, FAttachmentTransformRules::KeepWorldTransform);
+// 		}
+// 	}
+// 	else
+// 	{
+// 		if (GetAttachParentActor())
+// 		{
+// 			DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+// 		}
+// 	}
+// }
+
+void AWater_TestCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
+{
+	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
+
+	AActor* BaseActor = APawn::GetMovementBaseActor(this);
+
+	if (BaseActor && BaseActor->IsA(ABoatNetworked::StaticClass()))
+	{
+		//AttachToActor(BaseActor, FAttachmentTransformRules::KeepWorldTransform);
+		if (HasAuthority())
+		{
+			AttachToActor(BaseActor, FAttachmentTransformRules::KeepWorldTransform);
+		}
+	}
+	else
+	{
+		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	}
 }

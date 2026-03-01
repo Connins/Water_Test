@@ -11,12 +11,12 @@ ABoatNetworked::ABoatNetworked()
     Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
     RootComponent = Mesh;
 
-    Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
     Mesh->SetEnableGravity(true);
 
     Mesh->SetIsReplicated(false); // we manually replicate transform
+    
+    Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
 }
-
 void ABoatNetworked::BeginPlay()
 {
     Super::BeginPlay();
