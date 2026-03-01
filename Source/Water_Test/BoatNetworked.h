@@ -27,4 +27,16 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	UStaticMeshComponent* Mesh;
 	
+	// Replicated transform from server
+	UPROPERTY(ReplicatedUsing = OnRep_ServerTransform)
+	FTransform ServerTransform;
+
+	UFUNCTION()
+	void OnRep_ServerTransform();
+
+	// Client interpolation target
+	FTransform TargetTransform;
+
+	// Interp speed
+	float InterpSpeed = 8.0f;
 };

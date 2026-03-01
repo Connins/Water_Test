@@ -1,51 +1,74 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "BoatNetworked.h"
+#include "Net/UnrealNetwork.h"
 
-// Sets default values
 ABoatNetworked::ABoatNetworked()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-	
-	// Create Static Mesh
-	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
+    PrimaryActorTick.bCanEverTick = true;
 
-	bReplicates = true;
-	SetReplicateMovement(true);
-	// Make it the Root
-	RootComponent = Mesh;
-	
-	// Disable physics
-	Mesh->SetSimulatePhysics(false);
+    bReplicates = true;
+    SetReplicateMovement(false); // IMPORTANT
 
-	// Set collision profile
-	Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
-	
-	Mesh->SetIsReplicated(true);
-	Mesh->bReplicatePhysicsToAutonomousProxy = false;
+    Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
+    RootComponent = Mesh;
+
+    Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
+    Mesh->SetEnableGravity(true);
+
+    Mesh->SetIsReplicated(false); // we manually replicate transform
 }
 
-// Called when the game starts or when spawned
 void ABoatNetworked::BeginPlay()
 {
-	Super::BeginPlay();
-	if (HasAuthority())
-	{
-		Mesh->SetSimulatePhysics(true);
-		Mesh->SetEnableGravity(true);
-	}
-	else
-	{
-		Mesh->SetSimulatePhysics(false);
-	}
+    Super::BeginPlay();
+
+    if (HasAuthority())
+    {
+        Mesh->SetSimulatePhysics(true);
+    }
+    else
+    {
+        Mesh->SetSimulatePhysics(false);
+    }
 }
 
-// Called every frame
 void ABoatNetworked::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(DeltaTime);
 
+    if (HasAuthority())
+    {
+        // Server updates transform
+        ServerTransform = GetActorTransform();
+    }
+    else
+    {
+        // Client interpolates toward server transform
+        FVector NewLocation = FMath::VInterpTo(
+            GetActorLocation(),
+            TargetTransform.GetLocation(),
+            DeltaTime,
+            InterpSpeed
+        );
+
+        FRotator NewRotation = FMath::RInterpTo(
+            GetActorRotation(),
+            TargetTransform.GetRotation().Rotator(),
+            DeltaTime,
+            InterpSpeed
+        );
+
+        SetActorLocationAndRotation(NewLocation, NewRotation);
+    }
 }
 
+void ABoatNetworked::OnRep_ServerTransform()
+{
+    TargetTransform = ServerTransform;
+}
+
+void ABoatNetworked::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(ABoatNetworked, ServerTransform);
+}
