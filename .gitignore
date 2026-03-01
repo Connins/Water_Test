@@ -1,0 +1,27 @@
+# ===== Unreal Engine =====
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# ===== Rider / JetBrains =====
+.idea/
+
+# ===== Visual Studio (if ever generated) =====
+.vs/
+*.VC.db
+*.VC.opendb
+
+# Auto-generated project files
+*.sln
+*.xcodeproj
+*.xcworkspace
+
+# ===== OS Files =====
+.DS_Store
+Thumbs.db
+
+# ===== Logs & Temp =====
+*.log
+*.tmp
