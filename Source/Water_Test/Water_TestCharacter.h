@@ -95,6 +95,6 @@ public:
 
 protected:
 	//virtual void Tick(float DeltaTime) override;
-	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode) override;
+	//virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode) override;
 };
 

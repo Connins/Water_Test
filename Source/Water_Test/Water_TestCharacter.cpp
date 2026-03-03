@@ -51,11 +51,14 @@ AWater_TestCharacter::AWater_TestCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 	
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationRoll = false;
-	bUseControllerRotationYaw = true;
-
+	// bUseControllerRotationPitch = false;
+	// bUseControllerRotationRoll = false;
+	// bUseControllerRotationYaw = true;
+	//
 	GetCharacterMovement()->bIgnoreBaseRotation = true;
+	GetCharacterMovement()->NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
+	GetCharacterMovement()->bNetworkAlwaysReplicateTransformUpdateTimestamp = true;
+	GetCharacterMovement()->bUseFlatBaseForFloorChecks = true;
 }
 
 void AWater_TestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -162,22 +165,22 @@ void AWater_TestCharacter::DoJumpEnd()
 // 	}
 // }
 
-void AWater_TestCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
-{
-	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
-
-	AActor* BaseActor = APawn::GetMovementBaseActor(this);
-
-	if (BaseActor && BaseActor->IsA(ABoatNetworked::StaticClass()))
-	{
-		//AttachToActor(BaseActor, FAttachmentTransformRules::KeepWorldTransform);
-		if (HasAuthority())
-		{
-			AttachToActor(BaseActor, FAttachmentTransformRules::KeepWorldTransform);
-		}
-	}
-	else
-	{
-		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-	}
-}
+// void AWater_TestCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
+// {
+// 	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
+//
+// 	AActor* BaseActor = APawn::GetMovementBaseActor(this);
+//
+// 	if (BaseActor && BaseActor->IsA(ABoatNetworked::StaticClass()))
+// 	{
+// 		//AttachToActor(BaseActor, FAttachmentTransformRules::KeepWorldTransform);
+// 		if (HasAuthority())
+// 		{
+// 			AttachToActor(BaseActor, FAttachmentTransformRules::KeepWorldTransform);
+// 		}
+// 	}
+// 	else
+// 	{
+// 		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+// 	}
+// }
