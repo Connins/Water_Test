@@ -32,7 +32,7 @@ void ABoatNetworkedInterpAll::BeginPlay()
 	{
 		Mesh->SetSimulatePhysics(true);
 		Mesh->OnComponentBeginOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapBegin);
-		Mesh->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapEnd);
+		//Mesh->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapEnd);
 	}
 	else
 	{
@@ -91,12 +91,35 @@ void ABoatNetworkedInterpAll::InterpBoat(float DeltaTime)
 void ABoatNetworkedInterpAll::PushBoatToSpline()
 {
 	if (!CurrentRiver)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				5.0f,
+				FColor::Green,
+				TEXT("No River")
+			);
+		}
 		return;
+	}
 
 	UWaterSplineComponent* RiverSpline = CurrentRiver->GetWaterSpline();
 	
 	if (!RiverSpline)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				5.0f,
+				FColor::Green,
+				TEXT("No Spline")
+			);
+		}
 		return;
+	}
+	
 
 	FVector RaftLocation = Mesh->GetComponentLocation();
 
@@ -113,20 +136,32 @@ void ABoatNetworkedInterpAll::PushBoatToSpline()
 
 	float Distance = Direction.Size();
 
-	if (Distance < 10.f)
+	if (Distance < 10.f){
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				5.0f,
+				FColor::Green,
+				TEXT("Not Large Enough")
+			);
+		}
 		return;
-
+	}
 	Direction.Normalize();
 
 	FVector Force = Direction * CenteringForce;
 	
 	Mesh->AddForce(Force);
 	
+	FVector DisplaceArrow;
+	DisplaceArrow.Z = 30.f;
+	FVector ArrowLocation = RaftLocation + DisplaceArrow;
 	// visualize the force
 	DrawDebugDirectionalArrow(
 		GetWorld(),
-		RaftLocation,
-		RaftLocation + Direction * 300,
+		ArrowLocation,
+		ArrowLocation + Direction * 300,
 		50.f,
 		FColor::Red,
 		false,
@@ -163,26 +198,26 @@ void ABoatNetworkedInterpAll::OnOverlapBegin(
 	}
 }
 
-void ABoatNetworkedInterpAll::OnOverlapEnd(
-	UPrimitiveComponent* OverlappedComponent,
-	AActor* OtherActor,
-	UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex)
-{
-	UWaterBodyRiverComponent* RiverComp =
-		OtherActor->FindComponentByClass<UWaterBodyRiverComponent>();
-
-	if (RiverComp && RiverComp == CurrentRiver)
-	{
-		CurrentRiver = nullptr;
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				5.0f,
-				FColor::Green,
-				TEXT("Raft left river")
-			);
-		}
-	}
-}
+// void ABoatNetworkedInterpAll::OnOverlapEnd(
+// 	UPrimitiveComponent* OverlappedComponent,
+// 	AActor* OtherActor,
+// 	UPrimitiveComponent* OtherComp,
+// 	int32 OtherBodyIndex)
+// {
+// 	UWaterBodyRiverComponent* RiverComp =
+// 		OtherActor->FindComponentByClass<UWaterBodyRiverComponent>();
+//
+// 	if (RiverComp && RiverComp == CurrentRiver)
+// 	{
+// 		CurrentRiver = nullptr;
+// 		if (GEngine)
+// 		{
+// 			GEngine->AddOnScreenDebugMessage(
+// 				-1,
+// 				5.0f,
+// 				FColor::Green,
+// 				TEXT("Raft left river")
+// 			);
+// 		}
+// 	}
+// }
