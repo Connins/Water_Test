@@ -56,7 +56,7 @@ AWater_TestCharacter::AWater_TestCharacter()
 	// bUseControllerRotationYaw = true;
 	//
 	GetCharacterMovement()->bIgnoreBaseRotation = true;
-	GetCharacterMovement()->NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
+	GetCharacterMovement()->NetworkSmoothingMode = ENetworkSmoothingMode::Linear;
 	GetCharacterMovement()->bNetworkAlwaysReplicateTransformUpdateTimestamp = true;
 	GetCharacterMovement()->bUseFlatBaseForFloorChecks = true;
 }
@@ -162,6 +162,37 @@ void AWater_TestCharacter::DoJumpEnd()
 // 		{
 // 			DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 // 		}
+// 	}
+// }
+
+// void AWater_TestCharacter::Tick(float DeltaTime)
+// {
+// 	AActor* BaseActor = GetMovementBaseActor(this);
+//
+// 	if (BaseActor && BaseActor->IsA(ABoatNetworked::StaticClass()))
+// 	{
+// 		FTransform CurrentBoatTransform = BaseActor->GetActorTransform();
+//
+// 		if (!LastBoatTransform.Equals(FTransform::Identity))
+// 		{
+// 			FTransform Delta = CurrentBoatTransform.GetRelativeTransform(LastBoatTransform);
+//
+// 			// Only move player horizontally with boat
+// 			FVector Offset = Delta.GetLocation();
+// 			Offset.Z = 0.f;
+//
+// 			AddActorWorldOffset(Offset, true);
+//
+// 			// Apply only yaw rotation
+// 			FRotator RotDelta = Delta.Rotator();
+// 			AddActorWorldRotation(FRotator(0.f, RotDelta.Yaw, 0.f));
+// 		}
+//
+// 		LastBoatTransform = CurrentBoatTransform;
+// 	}
+// 	else
+// 	{
+// 		LastBoatTransform = FTransform::Identity;
 // 	}
 // }
 

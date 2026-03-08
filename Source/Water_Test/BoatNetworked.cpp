@@ -8,8 +8,9 @@ ABoatNetworked::ABoatNetworked()
     bReplicates = true;
     SetReplicateMovement(true);
 
-    NetUpdateFrequency = 200.f;
-    MinNetUpdateFrequency = 60.f;
+    SetNetUpdateFrequency(144.f);
+    SetMinNetUpdateFrequency(60.f);  
+
     bAlwaysRelevant = true;
 
     // === PHYSICS MESH (ROOT) ===
@@ -19,10 +20,12 @@ ABoatNetworked::ABoatNetworked()
     PhysicsMesh->SetCollisionProfileName(TEXT("PhysicsActor"));
     PhysicsMesh->SetIsReplicated(true);
     PhysicsMesh->bReplicatePhysicsToAutonomousProxy = true;
-
+    
     // // Optional but often helpful for boats
-    // PhysicsMesh->SetAngularDamping(2.5f);
+
     // PhysicsMesh->SetLinearDamping(0.3f);
+    // PhysicsMesh->SetAngularDamping(2.5f);
+
 
     // === VISUAL MESH (SMOOTHED ON CLIENT) ===
     VisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMesh"));
@@ -56,72 +59,47 @@ void ABoatNetworked::BeginPlay()
     }
 }
 
-// void ABoatNetworked::Tick(float DeltaTime)
-// {
-//     Super::Tick(DeltaTime);
-//
-//     if (HasAuthority())
-//     {
-//         // Server updates transform
-//         ServerTransform = GetActorTransform();
-//     }
-//     else
-//     {
-//         // Client interpolates toward server transform
-//         FVector NewLocation = FMath::VInterpTo(
-//             GetActorLocation(),
-//             TargetTransform.GetLocation(),
-//             DeltaTime,
-//             InterpSpeed
-//         );
-//
-//         FRotator NewRotation = FMath::RInterpTo(
-//             GetActorRotation(),
-//             TargetTransform.GetRotation().Rotator(),
-//             DeltaTime,
-//             InterpSpeed
-//         );
-//
-//         SetActorLocationAndRotation(NewLocation, NewRotation);
-//     }
-// }
-//
-// void ABoatNetworked::OnRep_ServerTransform()
-// {
-//     TargetTransform = ServerTransform;
-// }
-//
-// void ABoatNetworked::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-// {
-//     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-//
-//     DOREPLIFETIME(ABoatNetworked, ServerTransform);
-// }
-
 void ABoatNetworked::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-
-    Super::Tick(DeltaTime);
-
+    
+    if (HasAuthority())
+    {
+        clampRaftPhysics();
+    }
     if (!HasAuthority())
     {
-        const FTransform Target = PhysicsMesh->GetComponentTransform();
-        const FTransform Current = VisualMesh->GetComponentTransform();
-
-        FQuat SmoothedRot = FQuat::Slerp(
-            Current.GetRotation(),
-            Target.GetRotation(),
-            0.12f
-        );
-
-        FVector SmoothedLoc = FMath::VInterpTo(
-            Current.GetLocation(),
-            Target.GetLocation(),
-            DeltaTime,
-            8.f
-        );
-
-        VisualMesh->SetWorldLocationAndRotation(SmoothedLoc, SmoothedRot);
+        interpolateVisualMesh(DeltaTime);
     }
+}
+
+void ABoatNetworked::interpolateVisualMesh(float DeltaTime)
+{
+    const FTransform Target = PhysicsMesh->GetComponentTransform();
+    const FTransform Current = VisualMesh->GetComponentTransform();
+
+    FQuat SmoothedRot = FQuat::Slerp(
+        Current.GetRotation(),
+        Target.GetRotation(),
+        0.12f
+    );
+
+    FVector SmoothedLoc = FMath::VInterpTo(
+        Current.GetLocation(),
+        Target.GetLocation(),
+        DeltaTime,
+        8.f
+    );
+
+    VisualMesh->SetWorldLocationAndRotation(SmoothedLoc, SmoothedRot);
+}
+
+void ABoatNetworked::clampRaftPhysics()
+{
+    FVector AngVel = PhysicsMesh->GetPhysicsAngularVelocityInDegrees();
+    
+    AngVel.X = FMath::Clamp(AngVel.X, -40.f, 40.f);
+    AngVel.Y = FMath::Clamp(AngVel.Y, -40.f, 40.f);
+    
+    PhysicsMesh->SetPhysicsAngularVelocityInDegrees(AngVel);
 }
