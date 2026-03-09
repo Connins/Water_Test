@@ -55,10 +55,24 @@ AWater_TestCharacter::AWater_TestCharacter()
 	// bUseControllerRotationRoll = false;
 	// bUseControllerRotationYaw = true;
 	//
-	GetCharacterMovement()->bIgnoreBaseRotation = true;
-	GetCharacterMovement()->NetworkSmoothingMode = ENetworkSmoothingMode::Linear;
-	GetCharacterMovement()->bNetworkAlwaysReplicateTransformUpdateTimestamp = true;
-	GetCharacterMovement()->bUseFlatBaseForFloorChecks = true;
+	// GetCharacterMovement()->bIgnoreBaseRotation = true;
+	// GetCharacterMovement()->NetworkSmoothingMode = ENetworkSmoothingMode::Linear;
+	// GetCharacterMovement()->bNetworkAlwaysReplicateTransformUpdateTimestamp = true;
+	// GetCharacterMovement()->bUseFlatBaseForFloorChecks = true;
+	SetReplicates(true);
+	SetReplicateMovement(true);
+
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	
+	MoveComp->bServerAcceptClientAuthoritativePosition = true;
+	MoveComp->bIgnoreClientMovementErrorChecksAndCorrection = true;
+	MoveComp->NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;
+	
+	// MoveComp->PushForceFactor = 200.0f;
+	// MoveComp->MaxTouchForce = 150.0f;
+	// MoveComp->MinTouchForce = 0.0f;
+	// MoveComp->InitialPushForceFactor = 0.f;   // important for landing
+	// MoveComp->StandingDownwardForceScale = 0.f;
 }
 
 void AWater_TestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
