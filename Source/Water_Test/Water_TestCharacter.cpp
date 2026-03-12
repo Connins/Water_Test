@@ -51,28 +51,15 @@ AWater_TestCharacter::AWater_TestCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 	
-	// bUseControllerRotationPitch = false;
-	// bUseControllerRotationRoll = false;
-	// bUseControllerRotationYaw = true;
-	//
-	// GetCharacterMovement()->bIgnoreBaseRotation = true;
-	// GetCharacterMovement()->NetworkSmoothingMode = ENetworkSmoothingMode::Linear;
-	// GetCharacterMovement()->bNetworkAlwaysReplicateTransformUpdateTimestamp = true;
-	// GetCharacterMovement()->bUseFlatBaseForFloorChecks = true;
 	SetReplicates(true);
 	SetReplicateMovement(true);
 
+	
 	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
 	
 	MoveComp->bServerAcceptClientAuthoritativePosition = true;
 	MoveComp->bIgnoreClientMovementErrorChecksAndCorrection = true;
 	MoveComp->NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;
-	
-	// MoveComp->PushForceFactor = 200.0f;
-	// MoveComp->MaxTouchForce = 150.0f;
-	// MoveComp->MinTouchForce = 0.0f;
-	// MoveComp->InitialPushForceFactor = 0.f;   // important for landing
-	// MoveComp->StandingDownwardForceScale = 0.f;
 }
 
 void AWater_TestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -157,75 +144,49 @@ void AWater_TestCharacter::DoJumpEnd()
 	StopJumping();
 }
 
-// void AWater_TestCharacter::Tick(float DeltaTime)
-// {
-// 	Super::Tick(DeltaTime);
-//
-// 	AActor* BaseActor = APawn::GetMovementBaseActor(this);
-//
-// 	if (BaseActor && BaseActor->IsA(ABoatNetworked::StaticClass()))
-// 	{
-// 		if (GetAttachParentActor() != BaseActor)
-// 		{
-// 			AttachToActor(BaseActor, FAttachmentTransformRules::KeepWorldTransform);
-// 		}
-// 	}
-// 	else
-// 	{
-// 		if (GetAttachParentActor())
-// 		{
-// 			DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-// 		}
-// 	}
-// }
+void AWater_TestCharacter::BeginPlay()
+{
+	Super::BeginPlay();
 
-// void AWater_TestCharacter::Tick(float DeltaTime)
-// {
-// 	AActor* BaseActor = GetMovementBaseActor(this);
-//
-// 	if (BaseActor && BaseActor->IsA(ABoatNetworked::StaticClass()))
-// 	{
-// 		FTransform CurrentBoatTransform = BaseActor->GetActorTransform();
-//
-// 		if (!LastBoatTransform.Equals(FTransform::Identity))
-// 		{
-// 			FTransform Delta = CurrentBoatTransform.GetRelativeTransform(LastBoatTransform);
-//
-// 			// Only move player horizontally with boat
-// 			FVector Offset = Delta.GetLocation();
-// 			Offset.Z = 0.f;
-//
-// 			AddActorWorldOffset(Offset, true);
-//
-// 			// Apply only yaw rotation
-// 			FRotator RotDelta = Delta.Rotator();
-// 			AddActorWorldRotation(FRotator(0.f, RotDelta.Yaw, 0.f));
-// 		}
-//
-// 		LastBoatTransform = CurrentBoatTransform;
-// 	}
-// 	else
-// 	{
-// 		LastBoatTransform = FTransform::Identity;
-// 	}
-// }
+	if (HasAuthority() && !IsLocallyControlled())
+	{
+		ServerSmoothedLocation = GetActorLocation();
+		bServerSmoothingInitialized = true;
+	}
+}
 
-// void AWater_TestCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
-// {
-// 	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
-//
-// 	AActor* BaseActor = APawn::GetMovementBaseActor(this);
-//
-// 	if (BaseActor && BaseActor->IsA(ABoatNetworked::StaticClass()))
-// 	{
-// 		//AttachToActor(BaseActor, FAttachmentTransformRules::KeepWorldTransform);
-// 		if (HasAuthority())
-// 		{
-// 			AttachToActor(BaseActor, FAttachmentTransformRules::KeepWorldTransform);
-// 		}
-// 	}
-// 	else
-// 	{
-// 		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-// 	}
-// }
+void AWater_TestCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (HasAuthority() && !IsLocallyControlled())
+	{
+		FVector TargetLocation = GetActorLocation();
+
+		if (!bServerSmoothingInitialized)
+		{
+			ServerSmoothedLocation = TargetLocation;
+			bServerSmoothingInitialized = true;
+		}
+
+		float Dist = FVector::Dist(ServerSmoothedLocation, TargetLocation);
+
+		// snap if extremely far (lag spike / teleport)
+		if (Dist > 200.f)
+		{
+			ServerSmoothedLocation = TargetLocation;
+		}
+		else
+		{
+			ServerSmoothedLocation = FMath::VInterpTo(
+				ServerSmoothedLocation,
+				TargetLocation,
+				DeltaTime,
+				25.f
+			);
+		}
+
+		// move capsule smoothly for physics
+		GetCapsuleComponent()->SetWorldLocation(ServerSmoothedLocation, true);
+	}
+}

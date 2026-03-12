@@ -93,9 +93,12 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	
-	FTransform LastBoatTransform;
+	
 protected:
-	//virtual void Tick(float DeltaTime) override;
-	//virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode) override;
+	virtual void Tick(float DeltaTime) override;
+	virtual void BeginPlay() override;
+
+	FVector ServerSmoothedLocation;
+	bool bServerSmoothingInitialized = false;
 };
 
