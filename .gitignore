@@ -1,27 +1,44 @@
-# ===== Unreal Engine =====
+# Unreal Engine generated folders
 Binaries/
-Build/
 DerivedDataCache/
 Intermediate/
 Saved/
+Build/
 
-# ===== Rider / JetBrains =====
-.idea/
-
-# ===== Visual Studio (if ever generated) =====
+# Visual Studio files
 .vs/
 *.VC.db
 *.VC.opendb
-
-# Auto-generated project files
 *.sln
-*.xcodeproj
-*.xcworkspace
+*.opensdf
+*.sdf
+*.suo
 
-# ===== OS Files =====
+# Rider / JetBrains
+.idea/
+
+# VSCode
+.vscode/
+
+# OS files
 .DS_Store
 Thumbs.db
 
-# ===== Logs & Temp =====
-*.log
+# Unreal temporary files
 *.tmp
+*.log
+
+# Compiled source files
+*.obj
+*.pdb
+*.dll
+*.exe
+*.lib
+*.app
+
+# Ignore auto-generated project files
+*.xcodeproj
+*.xcworkspace
+
+# Unreal build files that regenerate
+Makefile
