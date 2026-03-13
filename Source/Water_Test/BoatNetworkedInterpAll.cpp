@@ -41,6 +41,7 @@ void ABoatNetworkedInterpAll::BeginPlay()
 	else
 	{
 		Mesh->SetSimulatePhysics(false);
+		SetActorLocationAndRotation(TargetTransform.GetLocation(), TargetTransform.GetRotation());
 	}
 }
 
@@ -59,7 +60,6 @@ void ABoatNetworkedInterpAll::Tick(float DeltaTime)
 	else
 	{
 		// Client interpolates toward server transform
-		SetActorLocationAndRotation(TargetTransform.GetLocation(), TargetTransform.GetRotation());
 		InterpBoat(DeltaTime);
 	}
 }
