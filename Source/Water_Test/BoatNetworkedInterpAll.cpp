@@ -2,6 +2,8 @@
 #include "WaterSplineComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/Character.h"
+#include "EngineUtils.h"
 
 ABoatNetworkedInterpAll::ABoatNetworkedInterpAll()
 {
@@ -16,23 +18,25 @@ ABoatNetworkedInterpAll::ABoatNetworkedInterpAll()
 	Mesh->SetEnableGravity(true);
 
 	Mesh->SetIsReplicated(false); // we manually replicate transform
-    
+
 	Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
-	
+
 	Mesh->SetLinearDamping(0.3f);
 	Mesh->SetAngularDamping(2.5f);
-	
+
 	Mesh->SetGenerateOverlapEvents(true);
 }
+
 void ABoatNetworkedInterpAll::BeginPlay()
 {
 	Super::BeginPlay();
 
 	if (HasAuthority())
 	{
-		Mesh->SetSimulatePhysics(true);
+		Mesh->SetSimulatePhysics(false); // enabled once 2 players are on board
 		Mesh->OnComponentBeginOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapBegin);
-		//Mesh->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapEnd);
+		Mesh->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapEnd);
+		ServerTransform = GetActorTransform();
 	}
 	else
 	{
@@ -46,6 +50,8 @@ void ABoatNetworkedInterpAll::Tick(float DeltaTime)
 
 	if (HasAuthority())
 	{
+		CheckPlayersOnBoat();
+
 		// Server updates transform
 		ServerTransform = GetActorTransform();
 		PushBoatToSpline();
@@ -53,6 +59,7 @@ void ABoatNetworkedInterpAll::Tick(float DeltaTime)
 	else
 	{
 		// Client interpolates toward server transform
+		SetActorLocationAndRotation(TargetTransform.GetLocation(), TargetTransform.GetRotation());
 		InterpBoat(DeltaTime);
 	}
 }
@@ -72,11 +79,11 @@ void ABoatNetworkedInterpAll::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 void ABoatNetworkedInterpAll::InterpBoat(float DeltaTime)
 {
 	FVector NewLocation = FMath::VInterpTo(
-			GetActorLocation(),
-			TargetTransform.GetLocation(),
-			DeltaTime,
-			InterpSpeed
-		);
+		GetActorLocation(),
+		TargetTransform.GetLocation(),
+		DeltaTime,
+		InterpSpeed
+	);
 
 	FRotator NewRotation = FMath::RInterpTo(
 		GetActorRotation(),
@@ -88,24 +95,56 @@ void ABoatNetworkedInterpAll::InterpBoat(float DeltaTime)
 	SetActorLocationAndRotation(NewLocation, NewRotation);
 }
 
-void ABoatNetworkedInterpAll::PushBoatToSpline()
+void ABoatNetworkedInterpAll::CheckPlayersOnBoat()
 {
-	if (!CurrentRiver)
+	if (Mesh->IsSimulatingPhysics())
 	{
+		return;
+	}
+
+	int32 NewPlayersOnBoat = 0;
+	for (TActorIterator<ACharacter> It(GetWorld()); It; ++It)
+	{
+		if (It->GetMovementBase() == Mesh)
+		{
+			NewPlayersOnBoat++;
+		}
+	}
+
+	if (NewPlayersOnBoat != PlayersOnBoat)
+	{
+		PlayersOnBoat = NewPlayersOnBoat;
 		if (GEngine)
 		{
 			GEngine->AddOnScreenDebugMessage(
 				-1,
 				5.0f,
 				FColor::Green,
-				TEXT("No River")
+				FString::Printf(TEXT("Players on boat: %d/2"), PlayersOnBoat)
 			);
 		}
+		Mesh->SetSimulatePhysics(PlayersOnBoat >= 2);
+	}
+}
+
+void ABoatNetworkedInterpAll::PushBoatToSpline()
+{
+	if (!CurrentRiver)
+	{
+		// if (GEngine)
+		// {
+		// 	GEngine->AddOnScreenDebugMessage(
+		// 		-1,
+		// 		5.0f,
+		// 		FColor::Green,
+		// 		TEXT("No River")
+		// 	);
+		// }
 		return;
 	}
 
 	UWaterSplineComponent* RiverSpline = CurrentRiver->GetWaterSpline();
-	
+
 	if (!RiverSpline)
 	{
 		if (GEngine)
@@ -119,7 +158,7 @@ void ABoatNetworkedInterpAll::PushBoatToSpline()
 		}
 		return;
 	}
-	
+
 
 	FVector RaftLocation = Mesh->GetComponentLocation();
 
@@ -136,7 +175,8 @@ void ABoatNetworkedInterpAll::PushBoatToSpline()
 
 	float Distance = Direction.Size();
 
-	if (Distance < 10.f){
+	if (Distance < 10.f)
+	{
 		if (GEngine)
 		{
 			GEngine->AddOnScreenDebugMessage(
@@ -151,9 +191,9 @@ void ABoatNetworkedInterpAll::PushBoatToSpline()
 	Direction.Normalize();
 
 	FVector Force = Direction * CenteringForce;
-	
+
 	Mesh->AddForce(Force);
-	
+
 	FVector DisplaceArrow;
 	DisplaceArrow.Z = 30.f;
 	FVector ArrowLocation = RaftLocation + DisplaceArrow;
@@ -183,41 +223,44 @@ void ABoatNetworkedInterpAll::OnOverlapBegin(
 		OtherActor->FindComponentByClass<UWaterBodyRiverComponent>();
 
 	if (RiverComp)
-	{
+	{ 
 		CurrentRiver = RiverComp;
-		
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				5.0f,
-				FColor::Green,
-				TEXT("Raft entered river")
-			);
-		}
+
+			// if (GEngine)
+			// {
+			// 	GEngine->AddOnScreenDebugMessage(
+			// 		-1,
+			// 		5.0f,
+			// 		FColor::Green,
+			// 		TEXT("Raft entered river")
+			// 	);
+			// }
 	}
+
 }
 
-// void ABoatNetworkedInterpAll::OnOverlapEnd(
-// 	UPrimitiveComponent* OverlappedComponent,
-// 	AActor* OtherActor,
-// 	UPrimitiveComponent* OtherComp,
-// 	int32 OtherBodyIndex)
-// {
-// 	UWaterBodyRiverComponent* RiverComp =
-// 		OtherActor->FindComponentByClass<UWaterBodyRiverComponent>();
-//
-// 	if (RiverComp && RiverComp == CurrentRiver)
-// 	{
-// 		CurrentRiver = nullptr;
-// 		if (GEngine)
-// 		{
-// 			GEngine->AddOnScreenDebugMessage(
-// 				-1,
-// 				5.0f,
-// 				FColor::Green,
-// 				TEXT("Raft left river")
-// 			);
-// 		}
-// 	}
-// }
+void ABoatNetworkedInterpAll::OnOverlapEnd(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex)
+{
+	// UWaterBodyRiverComponent* RiverComp =
+	// 	OtherActor->FindComponentByClass<UWaterBodyRiverComponent>();
+	//
+	// if (RiverComp && RiverComp == CurrentRiver)
+	// {
+	// 	CurrentRiver = nullptr;
+	// 	if (GEngine)
+	// 	{
+	// 		GEngine->AddOnScreenDebugMessage(
+	// 			-1,
+	// 			5.0f,
+	// 			FColor::Green,
+	// 			TEXT("Raft left river")
+	// 		);
+	// 	}
+	// 
+	// }
+
+}

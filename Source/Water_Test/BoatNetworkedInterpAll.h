@@ -62,11 +62,15 @@ public:
 		const FHitResult& SweepResult
 	);
 
-	// UFUNCTION()
-	// void OnOverlapEnd(
-	// 	UPrimitiveComponent* OverlappedComponent,
-	// 	AActor* OtherActor,
-	// 	UPrimitiveComponent* OtherComp,
-	// 	int32 OtherBodyIndex
-	// );
+	UFUNCTION()
+	void OnOverlapEnd(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex
+	);
+
+	void CheckPlayersOnBoat();
+
+	int32 PlayersOnBoat = 0;
 };
