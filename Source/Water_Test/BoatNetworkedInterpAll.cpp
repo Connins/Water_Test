@@ -33,7 +33,7 @@ void ABoatNetworkedInterpAll::BeginPlay()
 
 	if (HasAuthority())
 	{
-		Mesh->SetSimulatePhysics(false); // enabled once 2 players are on board
+		Mesh->SetSimulatePhysics(true); // enabled once 2 players are on board
 		Mesh->OnComponentBeginOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapBegin);
 		Mesh->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapEnd);
 		ServerTransform = GetActorTransform();
@@ -123,7 +123,7 @@ void ABoatNetworkedInterpAll::CheckPlayersOnBoat()
 				FString::Printf(TEXT("Players on boat: %d/2"), PlayersOnBoat)
 			);
 		}
-		Mesh->SetSimulatePhysics(PlayersOnBoat >= 2);
+		Mesh->SetSimulatePhysics(PlayersOnBoat >= playerNumber);
 	}
 }
 

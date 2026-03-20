@@ -73,4 +73,7 @@ public:
 	void CheckPlayersOnBoat();
 
 	int32 PlayersOnBoat = 0;
+
+	UPROPERTY(EditAnywhere)
+	int playerNumber = 1;
 };
