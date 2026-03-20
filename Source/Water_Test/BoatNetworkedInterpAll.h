@@ -46,31 +46,31 @@ public:
 	UPROPERTY(EditAnywhere)
 	float CenteringForce = 2000.0f;
 		
-	void PushBoatToSpline();
+	//void PushBoatToSpline();
 	
 	UPROPERTY()
 	UWaterBodyRiverComponent* CurrentRiver;
 	
-	// Overlap events
-	UFUNCTION()
-	void OnOverlapBegin(
-		UPrimitiveComponent* OverlappedComponent,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex,
-		bool bFromSweep,
-		const FHitResult& SweepResult
-	);
-
-	UFUNCTION()
-	void OnOverlapEnd(
-		UPrimitiveComponent* OverlappedComponent,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex
-	);
-
-	void CheckPlayersOnBoat();
+	// // Overlap events
+	// UFUNCTION()
+	// void OnOverlapBegin(
+	// 	UPrimitiveComponent* OverlappedComponent,
+	// 	AActor* OtherActor,
+	// 	UPrimitiveComponent* OtherComp,
+	// 	int32 OtherBodyIndex,
+	// 	bool bFromSweep,
+	// 	const FHitResult& SweepResult
+	// );
+	//
+	// UFUNCTION()
+	// void OnOverlapEnd(
+	// 	UPrimitiveComponent* OverlappedComponent,
+	// 	AActor* OtherActor,
+	// 	UPrimitiveComponent* OtherComp,
+	// 	int32 OtherBodyIndex
+	// );
+	//
+	// void CheckPlayersOnBoat();
 
 	int32 PlayersOnBoat = 0;
 

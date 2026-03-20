@@ -34,14 +34,14 @@ void ABoatNetworkedInterpAll::BeginPlay()
 	if (HasAuthority())
 	{
 		Mesh->SetSimulatePhysics(true); // enabled once 2 players are on board
-		Mesh->OnComponentBeginOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapBegin);
-		Mesh->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapEnd);
-		ServerTransform = GetActorTransform();
+		// Mesh->OnComponentBeginOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapBegin);
+		// Mesh->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapEnd);
+		//ServerTransform = GetActorTransform();
 	}
 	else
 	{
 		Mesh->SetSimulatePhysics(false);
-		SetActorLocationAndRotation(TargetTransform.GetLocation(), TargetTransform.GetRotation());
+		//SetActorLocationAndRotation(TargetTransform.GetLocation(), TargetTransform.GetRotation());
 	}
 }
 
@@ -51,11 +51,10 @@ void ABoatNetworkedInterpAll::Tick(float DeltaTime)
 
 	if (HasAuthority())
 	{
-		CheckPlayersOnBoat();
+		// CheckPlayersOnBoat();
 
 		// Server updates transform
 		ServerTransform = GetActorTransform();
-		PushBoatToSpline();
 	}
 	else
 	{
@@ -95,172 +94,172 @@ void ABoatNetworkedInterpAll::InterpBoat(float DeltaTime)
 	SetActorLocationAndRotation(NewLocation, NewRotation);
 }
 
-void ABoatNetworkedInterpAll::CheckPlayersOnBoat()
-{
-	if (Mesh->IsSimulatingPhysics())
-	{
-		return;
-	}
+// // void ABoatNetworkedInterpAll::CheckPlayersOnBoat()
+// // {
+// // 	if (Mesh->IsSimulatingPhysics())
+// // 	{
+// // 		return;
+// // 	}
+// //
+// // 	int32 NewPlayersOnBoat = 0;
+// // 	for (TActorIterator<ACharacter> It(GetWorld()); It; ++It)
+// // 	{
+// // 		if (It->GetMovementBase() == Mesh)
+// // 		{
+// // 			NewPlayersOnBoat++;
+// // 		}
+// // 	}
+// //
+// // 	if (NewPlayersOnBoat != PlayersOnBoat)
+// // 	{
+// // 		PlayersOnBoat = NewPlayersOnBoat;
+// // 		if (GEngine)
+// // 		{
+// // 			GEngine->AddOnScreenDebugMessage(
+// // 				-1,
+// // 				5.0f,
+// // 				FColor::Green,
+// // 				FString::Printf(TEXT("Players on boat: %d/2"), PlayersOnBoat)
+// // 			);
+// // 		}
+// // 		Mesh->SetSimulatePhysics(PlayersOnBoat >= playerNumber);
+// // 	}
+// // }
+//
+// void ABoatNetworkedInterpAll::PushBoatToSpline()
+// {
+// 	if (!CurrentRiver)
+// 	{
+// 		// if (GEngine)
+// 		// {
+// 		// 	GEngine->AddOnScreenDebugMessage(
+// 		// 		-1,
+// 		// 		5.0f,
+// 		// 		FColor::Green,
+// 		// 		TEXT("No River")
+// 		// 	);
+// 		// }
+// 		return;
+// 	}
+//
+// 	UWaterSplineComponent* RiverSpline = CurrentRiver->GetWaterSpline();
+//
+// 	if (!RiverSpline)
+// 	{
+// 		if (GEngine)
+// 		{
+// 			GEngine->AddOnScreenDebugMessage(
+// 				-1,
+// 				5.0f,
+// 				FColor::Green,
+// 				TEXT("No Spline")
+// 			);
+// 		}
+// 		return;
+// 	}
+//
+//
+// 	FVector RaftLocation = Mesh->GetComponentLocation();
+//
+// 	FVector ClosestPoint =
+// 		RiverSpline->FindLocationClosestToWorldLocation(
+// 			RaftLocation,
+// 			ESplineCoordinateSpace::World
+// 		);
+//
+// 	FVector Direction = ClosestPoint - RaftLocation;
+//
+// 	// ignore vertical correction
+// 	Direction.Z = 0;
+//
+// 	float Distance = Direction.Size();
+//
+// 	if (Distance < 10.f)
+// 	{
+// 		if (GEngine)
+// 		{
+// 			GEngine->AddOnScreenDebugMessage(
+// 				-1,
+// 				5.0f,
+// 				FColor::Green,
+// 				TEXT("Not Large Enough")
+// 			);
+// 		}
+// 		return;
+// 	}
+// 	Direction.Normalize();
+//
+// 	FVector Force = Direction * CenteringForce;
+//
+// 	Mesh->AddForce(Force);
+//
+// 	FVector DisplaceArrow;
+// 	DisplaceArrow.Z = 30.f;
+// 	FVector ArrowLocation = RaftLocation + DisplaceArrow;
+// 	// visualize the force
+// 	DrawDebugDirectionalArrow(
+// 		GetWorld(),
+// 		ArrowLocation,
+// 		ArrowLocation + Direction * 300,
+// 		50.f,
+// 		FColor::Red,
+// 		false,
+// 		0.0f,
+// 		0,
+// 		3.0f
+// 	);
+//}
 
-	int32 NewPlayersOnBoat = 0;
-	for (TActorIterator<ACharacter> It(GetWorld()); It; ++It)
-	{
-		if (It->GetMovementBase() == Mesh)
-		{
-			NewPlayersOnBoat++;
-		}
-	}
+// void ABoatNetworkedInterpAll::OnOverlapBegin(
+// 	UPrimitiveComponent* OverlappedComponent,
+// 	AActor* OtherActor,
+// 	UPrimitiveComponent* OtherComp,
+// 	int32 OtherBodyIndex,
+// 	bool bFromSweep,
+// 	const FHitResult& SweepResult)
+// {
+// 	UWaterBodyRiverComponent* RiverComp =
+// 		OtherActor->FindComponentByClass<UWaterBodyRiverComponent>();
+//
+// 	if (RiverComp)
+// 	{ 
+// 		CurrentRiver = RiverComp;
+//
+// 			// if (GEngine)
+// 			// {
+// 			// 	GEngine->AddOnScreenDebugMessage(
+// 			// 		-1,
+// 			// 		5.0f,
+// 			// 		FColor::Green,
+// 			// 		TEXT("Raft entered river")
+// 			// 	);
+// 			// }
+// 	}
+//
+// }
 
-	if (NewPlayersOnBoat != PlayersOnBoat)
-	{
-		PlayersOnBoat = NewPlayersOnBoat;
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				5.0f,
-				FColor::Green,
-				FString::Printf(TEXT("Players on boat: %d/2"), PlayersOnBoat)
-			);
-		}
-		Mesh->SetSimulatePhysics(PlayersOnBoat >= playerNumber);
-	}
-}
-
-void ABoatNetworkedInterpAll::PushBoatToSpline()
-{
-	if (!CurrentRiver)
-	{
-		// if (GEngine)
-		// {
-		// 	GEngine->AddOnScreenDebugMessage(
-		// 		-1,
-		// 		5.0f,
-		// 		FColor::Green,
-		// 		TEXT("No River")
-		// 	);
-		// }
-		return;
-	}
-
-	UWaterSplineComponent* RiverSpline = CurrentRiver->GetWaterSpline();
-
-	if (!RiverSpline)
-	{
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				5.0f,
-				FColor::Green,
-				TEXT("No Spline")
-			);
-		}
-		return;
-	}
-
-
-	FVector RaftLocation = Mesh->GetComponentLocation();
-
-	FVector ClosestPoint =
-		RiverSpline->FindLocationClosestToWorldLocation(
-			RaftLocation,
-			ESplineCoordinateSpace::World
-		);
-
-	FVector Direction = ClosestPoint - RaftLocation;
-
-	// ignore vertical correction
-	Direction.Z = 0;
-
-	float Distance = Direction.Size();
-
-	if (Distance < 10.f)
-	{
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				5.0f,
-				FColor::Green,
-				TEXT("Not Large Enough")
-			);
-		}
-		return;
-	}
-	Direction.Normalize();
-
-	FVector Force = Direction * CenteringForce;
-
-	Mesh->AddForce(Force);
-
-	FVector DisplaceArrow;
-	DisplaceArrow.Z = 30.f;
-	FVector ArrowLocation = RaftLocation + DisplaceArrow;
-	// visualize the force
-	DrawDebugDirectionalArrow(
-		GetWorld(),
-		ArrowLocation,
-		ArrowLocation + Direction * 300,
-		50.f,
-		FColor::Red,
-		false,
-		0.0f,
-		0,
-		3.0f
-	);
-}
-
-void ABoatNetworkedInterpAll::OnOverlapBegin(
-	UPrimitiveComponent* OverlappedComponent,
-	AActor* OtherActor,
-	UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex,
-	bool bFromSweep,
-	const FHitResult& SweepResult)
-{
-	UWaterBodyRiverComponent* RiverComp =
-		OtherActor->FindComponentByClass<UWaterBodyRiverComponent>();
-
-	if (RiverComp)
-	{ 
-		CurrentRiver = RiverComp;
-
-			// if (GEngine)
-			// {
-			// 	GEngine->AddOnScreenDebugMessage(
-			// 		-1,
-			// 		5.0f,
-			// 		FColor::Green,
-			// 		TEXT("Raft entered river")
-			// 	);
-			// }
-	}
-
-}
-
-void ABoatNetworkedInterpAll::OnOverlapEnd(
-	UPrimitiveComponent* OverlappedComponent,
-	AActor* OtherActor,
-	UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex)
-{
-	// UWaterBodyRiverComponent* RiverComp =
-	// 	OtherActor->FindComponentByClass<UWaterBodyRiverComponent>();
-	//
-	// if (RiverComp && RiverComp == CurrentRiver)
-	// {
-	// 	CurrentRiver = nullptr;
-	// 	if (GEngine)
-	// 	{
-	// 		GEngine->AddOnScreenDebugMessage(
-	// 			-1,
-	// 			5.0f,
-	// 			FColor::Green,
-	// 			TEXT("Raft left river")
-	// 		);
-	// 	}
-	// 
-	// }
-
-}
+// void ABoatNetworkedInterpAll::OnOverlapEnd(
+// 	UPrimitiveComponent* OverlappedComponent,
+// 	AActor* OtherActor,
+// 	UPrimitiveComponent* OtherComp,
+// 	int32 OtherBodyIndex)
+// {
+// 	// UWaterBodyRiverComponent* RiverComp =
+// 	// 	OtherActor->FindComponentByClass<UWaterBodyRiverComponent>();
+// 	//
+// 	// if (RiverComp && RiverComp == CurrentRiver)
+// 	// {
+// 	// 	CurrentRiver = nullptr;
+// 	// 	if (GEngine)
+// 	// 	{
+// 	// 		GEngine->AddOnScreenDebugMessage(
+// 	// 			-1,
+// 	// 			5.0f,
+// 	// 			FColor::Green,
+// 	// 			TEXT("Raft left river")
+// 	// 		);
+// 	// 	}
+// 	// 
+// 	// }
+//
+// }
