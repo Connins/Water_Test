@@ -9,7 +9,7 @@ ABoatNetworked::ABoatNetworked()
     SetReplicateMovement(true);
 
     SetNetUpdateFrequency(144.f);
-    SetMinNetUpdateFrequency(60.f);  
+    SetMinNetUpdateFrequency(60.f);
 
     bAlwaysRelevant = true;
 
@@ -20,7 +20,7 @@ ABoatNetworked::ABoatNetworked()
     PhysicsMesh->SetCollisionProfileName(TEXT("PhysicsActor"));
     PhysicsMesh->SetIsReplicated(true);
     PhysicsMesh->bReplicatePhysicsToAutonomousProxy = true;
-    
+
     // // Optional but often helpful for boats
 
     // PhysicsMesh->SetLinearDamping(0.3f);
@@ -55,14 +55,14 @@ void ABoatNetworked::BeginPlay()
 
         // Initialize visual mesh at correct transform
         VisualMesh->SetWorldTransform(PhysicsMesh->GetComponentTransform());
-        
+
     }
 }
 
 void ABoatNetworked::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-    
+
     if (HasAuthority())
     {
         clampRaftPhysics();
@@ -97,9 +97,9 @@ void ABoatNetworked::interpolateVisualMesh(float DeltaTime)
 void ABoatNetworked::clampRaftPhysics()
 {
     FVector AngVel = PhysicsMesh->GetPhysicsAngularVelocityInDegrees();
-    
+
     AngVel.X = FMath::Clamp(AngVel.X, -40.f, 40.f);
     AngVel.Y = FMath::Clamp(AngVel.Y, -40.f, 40.f);
-    
+
     PhysicsMesh->SetPhysicsAngularVelocityInDegrees(AngVel);
 }

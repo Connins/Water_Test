@@ -27,6 +27,7 @@ public class Water_Test : ModuleRules
 
 		PublicIncludePaths.AddRange(new string[] {
 			"Water_Test",
+			"Water_Test/Boat",
 			"Water_Test/Variant_Platforming",
 			"Water_Test/Variant_Platforming/Animation",
 			"Water_Test/Variant_Combat",

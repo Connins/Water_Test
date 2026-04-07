@@ -10,8 +10,8 @@ UCLASS()
 class WATER_TEST_API ABoatNetworked : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	// Sets default values for this actor's properties
 	ABoatNetworked();
 
@@ -27,9 +27,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 	UStaticMeshComponent* VisualMesh;
-	
+
 private:
 	void interpolateVisualMesh(float DeltaTime);
-	
+
 	void clampRaftPhysics();
 };

@@ -126,89 +126,89 @@ void ABoatNetworkedInterpAll::InterpBoat(float DeltaTime)
 // // 	}
 // // }
 //
-// void ABoatNetworkedInterpAll::PushBoatToSpline()
-// {
-// 	if (!CurrentRiver)
-// 	{
-// 		// if (GEngine)
-// 		// {
-// 		// 	GEngine->AddOnScreenDebugMessage(
-// 		// 		-1,
-// 		// 		5.0f,
-// 		// 		FColor::Green,
-// 		// 		TEXT("No River")
-// 		// 	);
-// 		// }
-// 		return;
-// 	}
-//
-// 	UWaterSplineComponent* RiverSpline = CurrentRiver->GetWaterSpline();
-//
-// 	if (!RiverSpline)
-// 	{
-// 		if (GEngine)
-// 		{
-// 			GEngine->AddOnScreenDebugMessage(
-// 				-1,
-// 				5.0f,
-// 				FColor::Green,
-// 				TEXT("No Spline")
-// 			);
-// 		}
-// 		return;
-// 	}
-//
-//
-// 	FVector RaftLocation = Mesh->GetComponentLocation();
-//
-// 	FVector ClosestPoint =
-// 		RiverSpline->FindLocationClosestToWorldLocation(
-// 			RaftLocation,
-// 			ESplineCoordinateSpace::World
-// 		);
-//
-// 	FVector Direction = ClosestPoint - RaftLocation;
-//
-// 	// ignore vertical correction
-// 	Direction.Z = 0;
-//
-// 	float Distance = Direction.Size();
-//
-// 	if (Distance < 10.f)
-// 	{
-// 		if (GEngine)
-// 		{
-// 			GEngine->AddOnScreenDebugMessage(
-// 				-1,
-// 				5.0f,
-// 				FColor::Green,
-// 				TEXT("Not Large Enough")
-// 			);
-// 		}
-// 		return;
-// 	}
-// 	Direction.Normalize();
-//
-// 	FVector Force = Direction * CenteringForce;
-//
-// 	Mesh->AddForce(Force);
-//
-// 	FVector DisplaceArrow;
-// 	DisplaceArrow.Z = 30.f;
-// 	FVector ArrowLocation = RaftLocation + DisplaceArrow;
-// 	// visualize the force
-// 	DrawDebugDirectionalArrow(
-// 		GetWorld(),
-// 		ArrowLocation,
-// 		ArrowLocation + Direction * 300,
-// 		50.f,
-// 		FColor::Red,
-// 		false,
-// 		0.0f,
-// 		0,
-// 		3.0f
-// 	);
- //}
+ void ABoatNetworkedInterpAll::PushBoatToSpline()
+ {
+	if (!CurrentRiver)
+	{
+		// if (GEngine)
+		// {
+		// 	GEngine->AddOnScreenDebugMessage(
+		// 		-1,
+		// 		5.0f,
+		// 		FColor::Green,
+		// 		TEXT("No River")
+		// 	);
+		// }
+		return;
+	}
+
+	UWaterSplineComponent* RiverSpline = CurrentRiver->GetWaterSpline();
+
+	if (!RiverSpline)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				5.0f,
+				FColor::Green,
+				TEXT("No Spline")
+			);
+		}
+		return;
+	}
+
+
+	FVector RaftLocation = Mesh->GetComponentLocation();
+
+	FVector ClosestPoint =
+		RiverSpline->FindLocationClosestToWorldLocation(
+			RaftLocation,
+			ESplineCoordinateSpace::World
+		);
+
+	FVector Direction = ClosestPoint - RaftLocation;
+
+	// ignore vertical correction
+	Direction.Z = 0;
+
+	float Distance = Direction.Size();
+
+	if (Distance < 10.f)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				5.0f,
+				FColor::Green,
+				TEXT("Not Large Enough")
+			);
+		}
+		return;
+	}
+	Direction.Normalize();
+
+	FVector Force = Direction * CenteringForce;
+
+	Mesh->AddForce(Force);
+
+	FVector DisplaceArrow;
+	DisplaceArrow.Z = 30.f;
+	FVector ArrowLocation = RaftLocation + DisplaceArrow;
+	// visualize the force
+	DrawDebugDirectionalArrow(
+		GetWorld(),
+		ArrowLocation,
+		ArrowLocation + Direction * 300,
+		50.f,
+		FColor::Red,
+		false,
+		0.0f,
+		0,
+		3.0f
+	);
+ }
 
 // void ABoatNetworkedInterpAll::OnOverlapBegin(
 // 	UPrimitiveComponent* OverlappedComponent,
@@ -222,7 +222,7 @@ void ABoatNetworkedInterpAll::InterpBoat(float DeltaTime)
 // 		OtherActor->FindComponentByClass<UWaterBodyRiverComponent>();
 //
 // 	if (RiverComp)
-// 	{ 
+// 	{
 // 		CurrentRiver = RiverComp;
 //
 // 			// if (GEngine)
@@ -232,7 +232,7 @@ void ABoatNetworkedInterpAll::InterpBoat(float DeltaTime)
 // 			// 		5.0f,
 // 			// 		FColor::Green,
 // 			// 		TEXT("Raft entered river")
-// 			// 	);
+// 			// 		);
 // 			// }
 // 	}
 //
@@ -257,9 +257,9 @@ void ABoatNetworkedInterpAll::InterpBoat(float DeltaTime)
 // 	// 			5.0f,
 // 	// 			FColor::Green,
 // 	// 			TEXT("Raft left river")
-// 	// 		);
+// 	// 			);
 // 	// 	}
-// 	// 
+// 	//
 // 	// }
 //
 // }

@@ -11,8 +11,8 @@ UCLASS()
 class WATER_TEST_API ABoatNetworkedInterpAll : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	// Sets default values for this actor's properties
 	ABoatNetworkedInterpAll();
 
@@ -20,13 +20,13 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	UStaticMeshComponent* Mesh;
-	
+
 	// Replicated transform from server
 	UPROPERTY(ReplicatedUsing = OnRep_ServerTransform)
 	FTransform ServerTransform;
@@ -40,17 +40,17 @@ public:
 	// Interp speed
 	UPROPERTY(EditAnywhere)
 	float InterpSpeed = 8.0f;
-	
+
 	void InterpBoat(float DeltaTime);
-	
+
 	UPROPERTY(EditAnywhere)
 	float CenteringForce = 2000.0f;
-		
-	//void PushBoatToSpline();
-	
+
+	void PushBoatToSpline();
+
 	UPROPERTY()
 	UWaterBodyRiverComponent* CurrentRiver;
-	
+
 	// // Overlap events
 	// UFUNCTION()
 	// void OnOverlapBegin(
