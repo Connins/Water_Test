@@ -12,6 +12,8 @@
 #include "InputActionValue.h"
 #include "Water_Test.h"
 #include "BoatNetworked.h"
+#include "Boat/BoatNetworkedInterpAll.h"
+#include "EngineUtils.h"
 
 AWater_TestCharacter::AWater_TestCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UBoatAwareMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -81,6 +83,9 @@ void AWater_TestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 		
+		// Push boat
+		EnhancedInputComponent->BindAction(PushBoatAction, ETriggerEvent::Started, this, &AWater_TestCharacter::DoPushBoat);
+
 		// Jumping
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
@@ -156,6 +161,38 @@ void AWater_TestCharacter::DoJumpEnd()
 {
 	// signal the character to stop jumping
 	StopJumping();
+}
+
+void AWater_TestCharacter::DoPushBoat()
+{
+	// Only the server should apply physics impulses
+	if (!HasAuthority())
+	{
+		ServerPushBoat();
+		return;
+	}
+
+	const FVector MyLocation = GetActorLocation();
+
+	for (TActorIterator<ABoatNetworkedInterpAll> It(GetWorld()); It; ++It)
+	{
+		ABoatNetworkedInterpAll* Boat = *It;
+		if (FVector::Dist(MyLocation, Boat->GetActorLocation()) <= BoatPushRange)
+		{
+			Boat->Mesh->AddImpulse(GetActorForwardVector() * BoatPushForce);
+			break;
+		}
+	}
+}
+
+void AWater_TestCharacter::ServerPushBoat_Implementation()
+{
+	DoPushBoat();
+}
+
+bool AWater_TestCharacter::ServerPushBoat_Validate()
+{
+	return true;
 }
 
 void AWater_TestCharacter::BeginPlay()

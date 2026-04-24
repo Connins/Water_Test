@@ -50,6 +50,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
 
+	/** Push Boat Input Action — bind E in IMC_Default */
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* PushBoatAction;
+
+	/** Impulse magnitude applied to the boat when pushing */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boat Push")
+	float BoatPushForce = 150000.f;
+
+	/** Radius in cm within which E-push works (100 = 1 metre) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boat Push")
+	float BoatPushRange = 100.f;
+
 public:
 
 	/** Constructor */
@@ -85,6 +97,14 @@ public:
 	/** Handles jump pressed inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoJumpEnd();
+
+	/** Applies an impulse to a nearby boat in the player's facing direction */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	virtual void DoPushBoat();
+
+private:
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerPushBoat();
 
 public:
 
