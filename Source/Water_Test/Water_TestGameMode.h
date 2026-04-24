@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "Boat/WaterTestGameState.h"
 #include "Water_TestGameMode.generated.h"
 
 /**

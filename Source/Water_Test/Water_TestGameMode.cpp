@@ -4,5 +4,5 @@
 
 AWater_TestGameMode::AWater_TestGameMode()
 {
-	// stub
+	GameStateClass = AWaterTestGameState::StaticClass();
 }
