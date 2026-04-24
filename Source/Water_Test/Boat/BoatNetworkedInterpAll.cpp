@@ -57,7 +57,8 @@ void ABoatNetworkedInterpAll::Tick(float DeltaTime)
 
 		if (OceanBody)
 		{
-			SnapToWaterSurface();
+			//SnapToWaterSurface();
+			//ApplyWaterSurfaceForce();
 		}
 
 		// Server updates transform
