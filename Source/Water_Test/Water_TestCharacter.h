@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "Boat/BoatAwareMovementComponent.h"
 #include "Water_TestCharacter.generated.h"
 
 class USpringArmComponent;
@@ -52,7 +53,7 @@ protected:
 public:
 
 	/** Constructor */
-	AWater_TestCharacter();	
+	AWater_TestCharacter(const FObjectInitializer& ObjectInitializer);
 
 protected:
 

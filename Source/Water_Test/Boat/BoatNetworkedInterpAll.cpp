@@ -26,7 +26,7 @@ ABoatNetworkedInterpAll::ABoatNetworkedInterpAll()
 	Mesh->SetLinearDamping(0.3f);
 	Mesh->SetAngularDamping(2.5f);
 
-	Mesh->SetGenerateOverlapEvents(true);
+	Mesh->SetGenerateOverlapEvents(false);
 }
 
 void ABoatNetworkedInterpAll::BeginPlay()
@@ -143,7 +143,10 @@ void ABoatNetworkedInterpAll::SnapToWaterSurface()
 
 	FVector NewLocation = Mesh->GetComponentLocation();
 	NewLocation.Z = Result.GetWaterSurfaceLocation().Z + WaterSurfaceOffset;
-	Mesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	if (GetActorTransform().GetLocation().Z < NewLocation.Z ){
+		
+		Mesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	}
 	
 }
 

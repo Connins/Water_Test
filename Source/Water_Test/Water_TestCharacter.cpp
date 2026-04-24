@@ -13,12 +13,25 @@
 #include "Water_Test.h"
 #include "BoatNetworked.h"
 
-AWater_TestCharacter::AWater_TestCharacter()
+AWater_TestCharacter::AWater_TestCharacter(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UBoatAwareMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	PrimaryActorTick.bCanEverTick = true;
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
+
+	// QueryOnly removes the capsule from Chaos physics simulation entirely.
+	// As QueryAndPhysics the capsule is a kinematic Chaos body that generates contact
+	// impulses on simulated bodies (like the boat) even though the character doesn't
+	// simulate physics itself. QueryOnly keeps it in the sweep/trace system so CMC
+	// movement and floor detection work normally, but the boat's Chaos particle never
+	// sees the capsule and receives no contact forces from it.
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+	// Skeletal mesh must also stay out of Chaos simulation — if it were QueryAndPhysics
+	// it would be a second kinematic body contacting the boat mesh independently.
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
@@ -37,6 +50,7 @@ AWater_TestCharacter::AWater_TestCharacter()
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
+	GetCharacterMovement()->bEnablePhysicsInteraction = true;
 
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
