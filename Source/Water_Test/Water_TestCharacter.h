@@ -138,12 +138,27 @@ public:
 	
 	
 protected:
-	virtual void Tick(float DeltaTime) override;
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
 
+	/** Server-side interpolation for remote clients (disabled by default) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Networking")
+	bool bUseServerSideInterpolation = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Networking", meta=(EditCondition="bUseServerSideInterpolation"))
+	float ServerInterpolationSpeed = 25.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Networking", meta=(EditCondition="bUseServerSideInterpolation"))
+	float ServerSnapDistance = 200.f;
+
+	/** Performs server-side interpolation of character position for remote clients */
+	void PerformServerSideInterpolation(float DeltaTime);
+
+private:
 	FVector ServerSmoothedLocation;
 	bool bServerSmoothingInitialized = false;
 
+protected:
 	// Boat currently being driven (nullptr if on foot)
 	UPROPERTY(Replicated, BlueprintReadOnly, Category="Boat Driving")
 	class ABoatNetworkedInterpAll* ControlledBoat;

@@ -224,7 +224,7 @@ void AWater_TestCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (HasAuthority() && !IsLocallyControlled())
+	if (bUseServerSideInterpolation && HasAuthority() && !IsLocallyControlled())
 	{
 		ServerSmoothedLocation = GetActorLocation();
 		bServerSmoothingInitialized = true;
@@ -235,36 +235,46 @@ void AWater_TestCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (HasAuthority() && !IsLocallyControlled())
+	if (bUseServerSideInterpolation)
 	{
-		FVector TargetLocation = GetActorLocation();
-
-		if (!bServerSmoothingInitialized)
-		{
-			ServerSmoothedLocation = TargetLocation;
-			bServerSmoothingInitialized = true;
-		}
-
-		float Dist = FVector::Dist(ServerSmoothedLocation, TargetLocation);
-
-		// snap if extremely far (lag spike / teleport)
-		if (Dist > 200.f)
-		{
-			ServerSmoothedLocation = TargetLocation;
-		}
-		else
-		{
-			ServerSmoothedLocation = FMath::VInterpTo(
-				ServerSmoothedLocation,
-				TargetLocation,
-				DeltaTime,
-				25.f
-			);
-		}
-
-		// move capsule smoothly for physics
-		GetCapsuleComponent()->SetWorldLocation(ServerSmoothedLocation, true);
+		PerformServerSideInterpolation(DeltaTime);
 	}
+}
+
+void AWater_TestCharacter::PerformServerSideInterpolation(float DeltaTime)
+{
+	if (!HasAuthority() || IsLocallyControlled())
+	{
+		return;
+	}
+
+	FVector TargetLocation = GetActorLocation();
+
+	if (!bServerSmoothingInitialized)
+	{
+		ServerSmoothedLocation = TargetLocation;
+		bServerSmoothingInitialized = true;
+	}
+
+	float Dist = FVector::Dist(ServerSmoothedLocation, TargetLocation);
+
+	// snap if extremely far (lag spike / teleport)
+	if (Dist > ServerSnapDistance)
+	{
+		ServerSmoothedLocation = TargetLocation;
+	}
+	else
+	{
+		ServerSmoothedLocation = FMath::VInterpTo(
+			ServerSmoothedLocation,
+			TargetLocation,
+			DeltaTime,
+			ServerInterpolationSpeed
+		);
+	}
+
+	// move capsule smoothly for physics
+	GetCapsuleComponent()->SetWorldLocation(ServerSmoothedLocation, true);
 }
 
 void AWater_TestCharacter::DoEnterExitBoat()
