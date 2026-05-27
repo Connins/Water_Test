@@ -29,6 +29,14 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	UStaticMeshComponent* Mesh;
 
+	// Interaction region for entering driving mode
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	class UBoxComponent* DrivingTrigger;
+
+	// Visual marker for where motor thrust is applied (position this at the rear of the boat in the editor)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	class USceneComponent* MotorLocation;
+
 	// Replicated transform from server
 	UPROPERTY(ReplicatedUsing = OnRep_ServerTransform)
 	FTransform ServerTransform;
@@ -68,6 +76,36 @@ public:
 	// Damping applied to vertical velocity to prevent bouncing (higher = settles faster)
 	UPROPERTY(EditAnywhere, Category="Water Surface", meta=(ClampMin=0, ClampMax=50))
 	float SurfaceVerticalDamping = 4.f;
+
+	// --- Boat Driving ---
+
+	// Player currently driving this boat (nullptr if no one is driving)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category="Driving")
+	ACharacter* CurrentDriver;
+
+	// Maximum forward/backward thrust force
+	UPROPERTY(EditAnywhere, Category="Driving", meta=(ClampMin=0, ClampMax=500000))
+	float ThrustForce = 100000.f;
+
+	// Torque applied around Z axis for steering
+	UPROPERTY(EditAnywhere, Category="Driving", meta=(ClampMin=0, ClampMax=100000))
+	float SteeringTorque = 50000.f;
+
+	// Max speed in cm/s before thrust cuts off
+	UPROPERTY(EditAnywhere, Category="Driving", meta=(ClampMin=0, ClampMax=5000))
+	float MaxSpeed = 2000.f;
+
+	// Apply thrust and steering (called by driver character)
+	UFUNCTION(BlueprintCallable, Category="Driving")
+	void ApplyDrivingInput(float Throttle, float Steering);
+
+	// Assign a driver to this boat (server only)
+	UFUNCTION(BlueprintCallable, Category="Driving")
+	void SetDriver(ACharacter* NewDriver);
+
+	// Can the given character start driving? (checks proximity, etc.)
+	UFUNCTION(BlueprintCallable, Category="Driving")
+	bool CanBeginDriving(ACharacter* Character) const;
 
 private:
 	// Spring force pulling the boat toward the wave surface each tick

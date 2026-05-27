@@ -6,6 +6,7 @@
 #include "EngineUtils.h"
 #include "WaterBodyActor.h"
 #include "WaterBodyComponent.h"
+#include "Components/BoxComponent.h"
 
 ABoatNetworkedInterpAll::ABoatNetworkedInterpAll()
 {
@@ -27,6 +28,19 @@ ABoatNetworkedInterpAll::ABoatNetworkedInterpAll()
 	Mesh->SetAngularDamping(2.5f);
 
 	Mesh->SetGenerateOverlapEvents(false);
+
+	// Create driving trigger zone
+	DrivingTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("DrivingTrigger"));
+	DrivingTrigger->SetupAttachment(Mesh);
+	DrivingTrigger->SetBoxExtent(FVector(100.f, 100.f, 100.f));
+	DrivingTrigger->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	DrivingTrigger->SetGenerateOverlapEvents(true);
+
+	// Create motor location marker (position this at the rear of the boat in the editor)
+	MotorLocation = CreateDefaultSubobject<USceneComponent>(TEXT("MotorLocation"));
+	MotorLocation->SetupAttachment(Mesh);
+	// Default to 150cm behind center
+	MotorLocation->SetRelativeLocation(FVector(-150.f, 0.f, 0.f));
 }
 
 void ABoatNetworkedInterpAll::BeginPlay()
@@ -81,6 +95,7 @@ void ABoatNetworkedInterpAll::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABoatNetworkedInterpAll, ServerTransform);
+	DOREPLIFETIME(ABoatNetworkedInterpAll, CurrentDriver);
 }
 
 void ABoatNetworkedInterpAll::ApplyWaterSurfaceForce()
@@ -338,3 +353,71 @@ void ABoatNetworkedInterpAll::InterpBoat(float DeltaTime)
 // 	// }
 //
 // }
+
+void ABoatNetworkedInterpAll::ApplyDrivingInput(float Throttle, float Steering)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (!Mesh->IsSimulatingPhysics())
+	{
+		return;
+	}
+
+	// Clamp inputs
+	Throttle = FMath::Clamp(Throttle, -1.f, 1.f);
+	Steering = FMath::Clamp(Steering, -1.f, 1.f);
+
+	// Get current forward velocity to check against max speed
+	FVector Velocity = Mesh->GetPhysicsLinearVelocity();
+	FVector ForwardDir = GetActorForwardVector();
+	float ForwardSpeed = FVector::DotProduct(Velocity, ForwardDir);
+
+	// Apply thrust force at rear of boat (like a motor)
+	if (FMath::Abs(ForwardSpeed) < MaxSpeed || (Throttle * ForwardSpeed < 0.f))
+	{
+		FVector ThrustDirection = ForwardDir * Throttle;
+		FVector ForceToApply = ThrustDirection * ThrustForce;
+
+		// Apply force at motor location (position this component in the editor)
+		FVector WorldMotorLocation = MotorLocation->GetComponentLocation();
+
+		Mesh->AddForceAtLocation(ForceToApply, WorldMotorLocation);
+	}
+
+	// Apply steering torque around Z axis
+	if (FMath::Abs(Steering) > 0.01f)
+	{
+		FVector TorqueToApply = FVector(0.f, 0.f, Steering * SteeringTorque);
+		Mesh->AddTorqueInRadians(TorqueToApply, NAME_None, true);
+	}
+}
+
+void ABoatNetworkedInterpAll::SetDriver(ACharacter* NewDriver)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	CurrentDriver = NewDriver;
+}
+
+bool ABoatNetworkedInterpAll::CanBeginDriving(ACharacter* Character) const
+{
+	if (!Character || !DrivingTrigger)
+	{
+		return false;
+	}
+
+	// Check if already has a driver
+	if (CurrentDriver != nullptr)
+	{
+		return false;
+	}
+
+	// Check if character is within the trigger zone
+	return DrivingTrigger->IsOverlappingActor(Character);
+}

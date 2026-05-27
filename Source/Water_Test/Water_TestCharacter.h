@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
-#include "Boat/BoatAwareMovementComponent.h"
+#include "NetworkedActors/Boats/BoatAwareMovementComponent.h"
 #include "Water_TestCharacter.generated.h"
 
 class USpringArmComponent;
@@ -53,6 +53,10 @@ protected:
 	/** Push Boat Input Action — bind E in IMC_Default */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* PushBoatAction;
+
+	/** Enter/Exit Boat Driving Mode Input Action */
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* EnterBoatAction;
 
 	/** Impulse magnitude applied to the boat when pushing */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boat Push")
@@ -102,9 +106,26 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoPushBoat();
 
+	/** Enter or exit boat driving mode */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	virtual void DoEnterExitBoat();
+
+	/** Route driving input to controlled boat */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	virtual void DoDriveBoat(float Throttle, float Steering);
+
 private:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerPushBoat();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerEnterBoat(class ABoatNetworkedInterpAll* Boat);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerExitBoat();
+
+	UFUNCTION(Server, Unreliable, WithValidation)
+	void ServerDriveBoat(float Throttle, float Steering);
 
 public:
 
@@ -121,5 +142,9 @@ protected:
 
 	FVector ServerSmoothedLocation;
 	bool bServerSmoothingInitialized = false;
+
+	// Boat currently being driven (nullptr if on foot)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category="Boat Driving")
+	class ABoatNetworkedInterpAll* ControlledBoat;
 };
 

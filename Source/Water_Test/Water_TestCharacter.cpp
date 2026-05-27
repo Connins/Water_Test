@@ -11,9 +11,10 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Water_Test.h"
-#include "BoatNetworked.h"
-#include "Boat/BoatNetworkedInterpAll.h"
+#include "NetworkedActors/Boats/BoatNetworked.h"
+#include "NetworkedActors/Boats/BoatNetworkedInterpAll.h"
 #include "EngineUtils.h"
+#include "Net/UnrealNetwork.h"
 
 AWater_TestCharacter::AWater_TestCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UBoatAwareMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -82,9 +83,12 @@ void AWater_TestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 {
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-		
+
 		// Push boat
 		EnhancedInputComponent->BindAction(PushBoatAction, ETriggerEvent::Started, this, &AWater_TestCharacter::DoPushBoat);
+
+		// Enter/exit boat
+		EnhancedInputComponent->BindAction(EnterBoatAction, ETriggerEvent::Started, this, &AWater_TestCharacter::DoEnterExitBoat);
 
 		// Jumping
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
@@ -108,8 +112,16 @@ void AWater_TestCharacter::Move(const FInputActionValue& Value)
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
-	// route the input
-	DoMove(MovementVector.X, MovementVector.Y);
+	// If driving a boat, route to boat instead
+	if (ControlledBoat)
+	{
+		DoDriveBoat(MovementVector.Y, MovementVector.X);
+	}
+	else
+	{
+		// route the input to character movement
+		DoMove(MovementVector.X, MovementVector.Y);
+	}
 }
 
 void AWater_TestCharacter::Look(const FInputActionValue& Value)
@@ -123,6 +135,12 @@ void AWater_TestCharacter::Look(const FInputActionValue& Value)
 
 void AWater_TestCharacter::DoMove(float Right, float Forward)
 {
+	// Don't move character if driving a boat
+	if (ControlledBoat)
+	{
+		return;
+	}
+
 	if (GetController() != nullptr)
 	{
 		// find out which way is forward
@@ -132,10 +150,10 @@ void AWater_TestCharacter::DoMove(float Right, float Forward)
 		// get forward vector
 		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 
-		// get right vector 
+		// get right vector
 		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-		// add movement 
+		// add movement
 		AddMovementInput(ForwardDirection, Forward);
 		AddMovementInput(RightDirection, Right);
 	}
@@ -195,6 +213,13 @@ bool AWater_TestCharacter::ServerPushBoat_Validate()
 	return true;
 }
 
+void AWater_TestCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AWater_TestCharacter, ControlledBoat);
+}
+
 void AWater_TestCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -240,4 +265,101 @@ void AWater_TestCharacter::Tick(float DeltaTime)
 		// move capsule smoothly for physics
 		GetCapsuleComponent()->SetWorldLocation(ServerSmoothedLocation, true);
 	}
+}
+
+void AWater_TestCharacter::DoEnterExitBoat()
+{
+	// Exit if already in a boat
+	if (ControlledBoat)
+	{
+		if (!HasAuthority())
+		{
+			ServerExitBoat();
+		}
+		else
+		{
+			ControlledBoat->SetDriver(nullptr);
+			ControlledBoat = nullptr;
+		}
+		return;
+	}
+
+	// Try to enter a nearby boat
+	const FVector MyLocation = GetActorLocation();
+
+	for (TActorIterator<ABoatNetworkedInterpAll> It(GetWorld()); It; ++It)
+	{
+		ABoatNetworkedInterpAll* Boat = *It;
+		if (Boat->CanBeginDriving(this))
+		{
+			if (!HasAuthority())
+			{
+				ServerEnterBoat(Boat);
+			}
+			else
+			{
+				ControlledBoat = Boat;
+				Boat->SetDriver(this);
+			}
+			break;
+		}
+	}
+}
+
+void AWater_TestCharacter::DoDriveBoat(float Throttle, float Steering)
+{
+	if (!ControlledBoat)
+	{
+		return;
+	}
+
+	if (!HasAuthority())
+	{
+		ServerDriveBoat(Throttle, Steering);
+	}
+	else
+	{
+		ControlledBoat->ApplyDrivingInput(Throttle, Steering);
+	}
+}
+
+void AWater_TestCharacter::ServerEnterBoat_Implementation(ABoatNetworkedInterpAll* Boat)
+{
+	if (Boat && Boat->CanBeginDriving(this))
+	{
+		ControlledBoat = Boat;
+		Boat->SetDriver(this);
+	}
+}
+
+bool AWater_TestCharacter::ServerEnterBoat_Validate(ABoatNetworkedInterpAll* Boat)
+{
+	return true;
+}
+
+void AWater_TestCharacter::ServerExitBoat_Implementation()
+{
+	if (ControlledBoat)
+	{
+		ControlledBoat->SetDriver(nullptr);
+		ControlledBoat = nullptr;
+	}
+}
+
+bool AWater_TestCharacter::ServerExitBoat_Validate()
+{
+	return true;
+}
+
+void AWater_TestCharacter::ServerDriveBoat_Implementation(float Throttle, float Steering)
+{
+	if (ControlledBoat)
+	{
+		ControlledBoat->ApplyDrivingInput(Throttle, Steering);
+	}
+}
+
+bool AWater_TestCharacter::ServerDriveBoat_Validate(float Throttle, float Steering)
+{
+	return true;
 }
