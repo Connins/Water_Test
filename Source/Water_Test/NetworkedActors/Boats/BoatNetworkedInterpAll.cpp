@@ -7,6 +7,7 @@
 #include "WaterBodyActor.h"
 #include "WaterBodyComponent.h"
 #include "Components/BoxComponent.h"
+#include "Water_TestCharacter.h"
 
 ABoatNetworkedInterpAll::ABoatNetworkedInterpAll()
 {
@@ -50,14 +51,17 @@ void ABoatNetworkedInterpAll::BeginPlay()
 	if (HasAuthority())
 	{
 		Mesh->SetSimulatePhysics(true); // enabled once 2 players are on board
-		// Mesh->OnComponentBeginOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapBegin);
-		// Mesh->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnOverlapEnd);
-		//ServerTransform = GetActorTransform();
+
+		// Bind overlap events for driving trigger
+		if (DrivingTrigger)
+		{
+			DrivingTrigger->OnComponentBeginOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnDrivingTriggerBeginOverlap);
+			DrivingTrigger->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnDrivingTriggerEndOverlap);
+		}
 	}
 	else
 	{
 		Mesh->SetSimulatePhysics(false);
-		//SetActorLocationAndRotation(TargetTransform.GetLocation(), TargetTransform.GetRotation());
 	}
 }
 
@@ -74,6 +78,9 @@ void ABoatNetworkedInterpAll::Tick(float DeltaTime)
 			SnapToWaterSurface();
 			//ApplyWaterSurfaceForce();
 		}
+
+		// Check if driver has left the trigger zone
+		CheckDriverInZone();
 
 		// Server updates transform
 		ServerTransform = GetActorTransform();
@@ -420,4 +427,47 @@ bool ABoatNetworkedInterpAll::CanBeginDriving(ACharacter* Character) const
 
 	// Check if character is within the trigger zone
 	return DrivingTrigger->IsOverlappingActor(Character);
+}
+
+void ABoatNetworkedInterpAll::CheckDriverInZone()
+{
+	if (!HasAuthority() || !CurrentDriver || !DrivingTrigger)
+	{
+		return;
+	}
+
+	// If driver is no longer overlapping the trigger, auto-exit them
+	if (!DrivingTrigger->IsOverlappingActor(CurrentDriver))
+	{
+		// Notify the character to clear their ControlledBoat reference
+		AWater_TestCharacter* WaterCharacter = Cast<AWater_TestCharacter>(CurrentDriver);
+		if (WaterCharacter)
+		{
+			WaterCharacter->ServerExitBoat();
+		}
+
+		CurrentDriver = nullptr;
+	}
+}
+
+void ABoatNetworkedInterpAll::OnDrivingTriggerBeginOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	// Optional: Add visual feedback or UI prompt when player enters the zone
+	// For now, we just rely on the player pressing the enter boat key
+}
+
+void ABoatNetworkedInterpAll::OnDrivingTriggerEndOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex)
+{
+	// Automatic exit is handled in CheckDriverInZone() in Tick
+	// This callback is here for potential future use (UI updates, etc.)
 }

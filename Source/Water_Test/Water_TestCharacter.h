@@ -114,15 +114,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoDriveBoat(float Throttle, float Steering);
 
+	/** Exit boat (can be called by boat when player leaves trigger zone) */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerExitBoat();
+
 private:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerPushBoat();
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerEnterBoat(class ABoatNetworkedInterpAll* Boat);
-
-	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerExitBoat();
 
 	UFUNCTION(Server, Unreliable, WithValidation)
 	void ServerDriveBoat(float Throttle, float Steering);

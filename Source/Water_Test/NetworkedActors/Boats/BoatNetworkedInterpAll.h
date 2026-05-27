@@ -107,12 +107,32 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Driving")
 	bool CanBeginDriving(ACharacter* Character) const;
 
+	// Check if current driver has left the trigger zone
+	void CheckDriverInZone();
+
 private:
 	// Spring force pulling the boat toward the wave surface each tick
 	void ApplyWaterSurfaceForce();
 
 	// Hard-snaps the boat's Z to the wave surface while preserving all other physics state
 	void SnapToWaterSurface();
+
+	// Overlap callbacks for driving trigger
+	UFUNCTION()
+	void OnDrivingTriggerBeginOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnDrivingTriggerEndOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex);
 
 	// // Overlap events
 	// UFUNCTION()
