@@ -15,9 +15,12 @@ class AWater_TestGameMode : public AGameModeBase
 	GENERATED_BODY()
 
 public:
-	
+
 	/** Constructor */
 	AWater_TestGameMode();
+
+	/** Assigns each local player a unique controller ID so two gamepads route to two clients */
+	virtual void PostLogin(APlayerController* NewPlayerController) override;
 };
 
 
