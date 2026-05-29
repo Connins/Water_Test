@@ -42,6 +42,30 @@ ABoatNetworkedInterpAll::ABoatNetworkedInterpAll()
 	MotorLocation->SetupAttachment(Mesh);
 	// Default to 150cm behind center
 	MotorLocation->SetRelativeLocation(FVector(-150.f, 0.f, 0.f));
+
+	// Clockwise turn zone — right side of boat by default; reposition in the editor to taste
+	ClockwiseTurnZone = CreateDefaultSubobject<UBoxComponent>(TEXT("ClockwiseTurnZone"));
+	ClockwiseTurnZone->SetupAttachment(Mesh);
+	ClockwiseTurnZone->SetBoxExtent(FVector(80.f, 80.f, 100.f));
+	ClockwiseTurnZone->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	ClockwiseTurnZone->SetGenerateOverlapEvents(true);
+	ClockwiseTurnZone->SetRelativeLocation(FVector(0.f, 150.f, 0.f));
+
+	// Anti-clockwise turn zone — left side of boat by default
+	AntiClockwiseTurnZone = CreateDefaultSubobject<UBoxComponent>(TEXT("AntiClockwiseTurnZone"));
+	AntiClockwiseTurnZone->SetupAttachment(Mesh);
+	AntiClockwiseTurnZone->SetBoxExtent(FVector(80.f, 80.f, 100.f));
+	AntiClockwiseTurnZone->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	AntiClockwiseTurnZone->SetGenerateOverlapEvents(true);
+	AntiClockwiseTurnZone->SetRelativeLocation(FVector(0.f, -150.f, 0.f));
+
+	// Thrust zone — front of boat by default; reposition in the editor
+	ThrustZone = CreateDefaultSubobject<UBoxComponent>(TEXT("ThrustZone"));
+	ThrustZone->SetupAttachment(Mesh);
+	ThrustZone->SetBoxExtent(FVector(80.f, 80.f, 100.f));
+	ThrustZone->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	ThrustZone->SetGenerateOverlapEvents(true);
+	ThrustZone->SetRelativeLocation(FVector(150.f, 0.f, 0.f));
 }
 
 void ABoatNetworkedInterpAll::BeginPlay()
@@ -57,6 +81,23 @@ void ABoatNetworkedInterpAll::BeginPlay()
 		{
 			DrivingTrigger->OnComponentBeginOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnDrivingTriggerBeginOverlap);
 			DrivingTrigger->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnDrivingTriggerEndOverlap);
+		}
+
+		// Bind overlap events for zone-based turn zones
+		if (ClockwiseTurnZone)
+		{
+			ClockwiseTurnZone->OnComponentBeginOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnClockwiseZoneBeginOverlap);
+			ClockwiseTurnZone->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnClockwiseZoneEndOverlap);
+		}
+		if (AntiClockwiseTurnZone)
+		{
+			AntiClockwiseTurnZone->OnComponentBeginOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnAntiClockwiseZoneBeginOverlap);
+			AntiClockwiseTurnZone->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnAntiClockwiseZoneEndOverlap);
+		}
+		if (ThrustZone)
+		{
+			ThrustZone->OnComponentBeginOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnThrustZoneBeginOverlap);
+			ThrustZone->OnComponentEndOverlap.AddDynamic(this, &ABoatNetworkedInterpAll::OnThrustZoneEndOverlap);
 		}
 	}
 	else
@@ -81,6 +122,13 @@ void ABoatNetworkedInterpAll::Tick(float DeltaTime)
 
 		// Check if driver has left the trigger zone
 		CheckDriverInZone();
+
+		// Zone-based steering and thrust (run every tick as continuous forces)
+		if (SteeringMode == EBoatSteeringMode::ZoneBased)
+		{
+			ApplyZoneSteering();
+			ApplyZoneThrust();
+		}
 
 		// Server updates transform
 		ServerTransform = GetActorTransform();
@@ -394,8 +442,8 @@ void ABoatNetworkedInterpAll::ApplyDrivingInput(float Throttle, float Steering)
 		Mesh->AddForceAtLocation(ForceToApply, WorldMotorLocation);
 	}
 
-	// Apply steering torque around Z axis
-	if (FMath::Abs(Steering) > 0.01f)
+	// Apply steering torque around Z axis — skipped in ZoneBased mode (handled by ApplyZoneSteering)
+	if (SteeringMode == EBoatSteeringMode::DriverInput && FMath::Abs(Steering) > 0.01f)
 	{
 		FVector TorqueToApply = FVector(0.f, 0.f, Steering * SteeringTorque);
 		Mesh->AddTorqueInRadians(TorqueToApply, NAME_None, true);
@@ -470,4 +518,176 @@ void ABoatNetworkedInterpAll::OnDrivingTriggerEndOverlap(
 {
 	// Automatic exit is handled in CheckDriverInZone() in Tick
 	// This callback is here for potential future use (UI updates, etc.)
+}
+
+// -----------------------------------------------------------------------------
+// Steering mode swap
+// -----------------------------------------------------------------------------
+
+void ABoatNetworkedInterpAll::SetSteeringMode(EBoatSteeringMode NewMode)
+{
+	SteeringMode = NewMode;
+
+	// Clear any lingering zone-press state so the boat doesn't keep spinning
+	// after a switch back to DriverInput
+	ActiveClockwisePressers.Empty();
+	ActiveAntiClockwisePressers.Empty();
+}
+
+// -----------------------------------------------------------------------------
+// Zone-based steering
+// -----------------------------------------------------------------------------
+
+void ABoatNetworkedInterpAll::NotifyZoneTurnPressed(ACharacter* Character)
+{
+	if (!HasAuthority() || !Character)
+	{
+		return;
+	}
+
+	if (PlayersInClockwiseZone.Contains(Character))
+	{
+		ActiveClockwisePressers.Add(Character);
+	}
+	else if (PlayersInAntiClockwiseZone.Contains(Character))
+	{
+		ActiveAntiClockwisePressers.Add(Character);
+	}
+}
+
+void ABoatNetworkedInterpAll::NotifyZoneTurnReleased(ACharacter* Character)
+{
+	if (!HasAuthority() || !Character)
+	{
+		return;
+	}
+
+	ActiveClockwisePressers.Remove(Character);
+	ActiveAntiClockwisePressers.Remove(Character);
+}
+
+void ABoatNetworkedInterpAll::ApplyZoneSteering()
+{
+	if (!Mesh->IsSimulatingPhysics())
+	{
+		return;
+	}
+
+	const bool bCWActive  = PlayersInClockwiseZone.Num() > 0;
+	const bool bCCWActive = PlayersInAntiClockwiseZone.Num() > 0;
+
+	// Both sides pressed (or neither) — forces cancel, no net turn
+	if (bCWActive == bCCWActive)
+	{
+		return;
+	}
+
+	const float Direction = bCWActive ? 1.f : -1.f;
+	Mesh->AddTorqueInRadians(FVector(0.f, 0.f, Direction * SteeringTorque), NAME_None, true);
+}
+
+// -----------------------------------------------------------------------------
+// Zone overlap callbacks
+// -----------------------------------------------------------------------------
+
+void ABoatNetworkedInterpAll::OnClockwiseZoneBeginOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	if (ACharacter* Char = Cast<ACharacter>(OtherActor))
+	{
+		PlayersInClockwiseZone.Add(Char);
+	}
+}
+
+void ABoatNetworkedInterpAll::OnClockwiseZoneEndOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex)
+{
+	if (ACharacter* Char = Cast<ACharacter>(OtherActor))
+	{
+		PlayersInClockwiseZone.Remove(Char);
+		ActiveClockwisePressers.Remove(Char); // stop turning if they walk out while holding
+	}
+}
+
+void ABoatNetworkedInterpAll::OnAntiClockwiseZoneBeginOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	if (ACharacter* Char = Cast<ACharacter>(OtherActor))
+	{
+		PlayersInAntiClockwiseZone.Add(Char);
+	}
+}
+
+void ABoatNetworkedInterpAll::OnAntiClockwiseZoneEndOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex)
+{
+	if (ACharacter* Char = Cast<ACharacter>(OtherActor))
+	{
+		PlayersInAntiClockwiseZone.Remove(Char);
+		ActiveAntiClockwisePressers.Remove(Char); // stop turning if they walk out while holding
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Zone-based thrust
+// -----------------------------------------------------------------------------
+
+void ABoatNetworkedInterpAll::ApplyZoneThrust()
+{
+	if (!Mesh->IsSimulatingPhysics() || PlayersInThrustZone.Num() == 0)
+	{
+		return;
+	}
+
+	// Same speed cap and motor-location application as ApplyDrivingInput
+	const FVector Velocity   = Mesh->GetPhysicsLinearVelocity();
+	const FVector ForwardDir = GetActorForwardVector();
+	const float   ForwardSpeed = FVector::DotProduct(Velocity, ForwardDir);
+
+	if (FMath::Abs(ForwardSpeed) < MaxSpeed || ForwardSpeed < 0.f)
+	{
+		Mesh->AddForceAtLocation(ForwardDir * ThrustForce, MotorLocation->GetComponentLocation());
+	}
+}
+
+void ABoatNetworkedInterpAll::OnThrustZoneBeginOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	if (ACharacter* Char = Cast<ACharacter>(OtherActor))
+	{
+		PlayersInThrustZone.Add(Char);
+	}
+}
+
+void ABoatNetworkedInterpAll::OnThrustZoneEndOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex)
+{
+	if (ACharacter* Char = Cast<ACharacter>(OtherActor))
+	{
+		PlayersInThrustZone.Remove(Char);
+	}
 }

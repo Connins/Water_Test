@@ -58,6 +58,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* EnterBoatAction;
 
+	/** Zone-based turn input — direction is determined by which turn zone the player is standing in */
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* ZoneTurnAction;
+
 	/** Impulse magnitude applied to the boat when pushing */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boat Push")
 	float BoatPushForce = 150000.f;
@@ -110,6 +114,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoEnterExitBoat();
 
+	/** Press: start contributing to zone-based steering (direction set by which zone you're in) */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	virtual void DoZoneTurnStart();
+
+	/** Release: stop contributing to zone-based steering */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	virtual void DoZoneTurnEnd();
+
 	/** Route driving input to controlled boat */
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoDriveBoat(float Throttle, float Steering);
@@ -117,6 +129,12 @@ public:
 	/** Exit boat (can be called by boat when player leaves trigger zone) */
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerExitBoat();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerZoneTurnPressed();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerZoneTurnReleased();
 
 private:
 	UFUNCTION(Server, Reliable, WithValidation)

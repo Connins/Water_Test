@@ -90,6 +90,13 @@ void AWater_TestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		// Enter/exit boat
 		EnhancedInputComponent->BindAction(EnterBoatAction, ETriggerEvent::Started, this, &AWater_TestCharacter::DoEnterExitBoat);
 
+		// Zone-based turning (hold to turn; direction from which zone you're standing in)
+		if (ZoneTurnAction)
+		{
+			EnhancedInputComponent->BindAction(ZoneTurnAction, ETriggerEvent::Started,   this, &AWater_TestCharacter::DoZoneTurnStart);
+			EnhancedInputComponent->BindAction(ZoneTurnAction, ETriggerEvent::Completed, this, &AWater_TestCharacter::DoZoneTurnEnd);
+		}
+
 		// Jumping
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
@@ -370,6 +377,60 @@ void AWater_TestCharacter::ServerDriveBoat_Implementation(float Throttle, float 
 }
 
 bool AWater_TestCharacter::ServerDriveBoat_Validate(float Throttle, float Steering)
+{
+	return true;
+}
+
+void AWater_TestCharacter::DoZoneTurnStart()
+{
+	if (!HasAuthority())
+	{
+		ServerZoneTurnPressed();
+		return;
+	}
+
+	for (TActorIterator<ABoatNetworkedInterpAll> It(GetWorld()); It; ++It)
+	{
+		(*It)->NotifyZoneTurnPressed(this);
+	}
+}
+
+void AWater_TestCharacter::DoZoneTurnEnd()
+{
+	if (!HasAuthority())
+	{
+		ServerZoneTurnReleased();
+		return;
+	}
+
+	for (TActorIterator<ABoatNetworkedInterpAll> It(GetWorld()); It; ++It)
+	{
+		(*It)->NotifyZoneTurnReleased(this);
+	}
+}
+
+void AWater_TestCharacter::ServerZoneTurnPressed_Implementation()
+{
+	for (TActorIterator<ABoatNetworkedInterpAll> It(GetWorld()); It; ++It)
+	{
+		(*It)->NotifyZoneTurnPressed(this);
+	}
+}
+
+bool AWater_TestCharacter::ServerZoneTurnPressed_Validate()
+{
+	return true;
+}
+
+void AWater_TestCharacter::ServerZoneTurnReleased_Implementation()
+{
+	for (TActorIterator<ABoatNetworkedInterpAll> It(GetWorld()); It; ++It)
+	{
+		(*It)->NotifyZoneTurnReleased(this);
+	}
+}
+
+bool AWater_TestCharacter::ServerZoneTurnReleased_Validate()
 {
 	return true;
 }
