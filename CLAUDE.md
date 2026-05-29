@@ -4,68 +4,83 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Water_Test** is an Unreal Engine 5.7 game project (single `Water_Test` runtime module) that serves as a multi-variant gameplay prototype. It uses the Water, Buoyancy, StateTree, and GameplayStateTree plugins alongside UMG for UI and EnhancedInput for controls.
-In general making a boat physics game. It is going to be mutliplayer coopritive. Boat behaves with phsyics. 
+**Water_Test** is an Unreal Engine 5.7 game project (single `Water_Test` runtime module). The primary goal is a **multiplayer cooperative boat physics game** — players share a physics-driven boat on an ocean. It also contains three independent gameplay prototype variants (Platforming, Combat, SideScrolling) that are unrelated to the boat game.
+
+Uses: Water + Buoyancy plugins (ocean/wave surface), StateTree + GameplayStateTree (AI), UMG (UI), EnhancedInput (controls), AIModule (EQS/behavior).
 
 ## Building
 
-Build from UE5 via the Editor or UnrealBuildTool. There are no standalone build scripts — use the standard UE5 workflow:
+No standalone build scripts — use the standard UE5 workflow:
 
 - **Editor build**: Open `Water_Test.uproject` in Unreal Engine 5.7
 - **Command-line build** (from UE install directory):
   ```
   UnrealBuildTool.exe Water_Test Win64 Development "path/to/Water_Test.uproject"
   ```
-- **Editor target**: `Source/Water_TestEditor.Target.cs` (for editor builds)
-- **Game target**: `Source/Water_Test.Target.cs`
+- **Targets**: `Source/Water_TestEditor.Target.cs` (editor), `Source/Water_Test.Target.cs` (game)
+- No automated tests or lint commands.
 
-There are no automated tests or lint commands in this project.
+## Source Layout
 
-## Architecture: Three Game Variants
+```
+Source/Water_Test/
+├── Water_TestCharacter.h/.cpp       # Base player character (abstract) — boat driving RPCs live here
+├── Water_TestPlayerController.h/.cpp
+├── Water_TestGameMode.h/.cpp
+├── WaterTestGameState.h/.cpp
+├── NetworkedActors/
+│   ├── CLAUDE.md                    # Detailed boat implementation notes — read this
+│   ├── ReplicatedPhysicsObject.h/.cpp  # Base class: server physics, client interpolation
+│   └── Boats/
+│       ├── BoatNetworked.h/.cpp         # Split physics/visual mesh approach (older)
+│       ├── BoatNetworkedInterpAll.h/.cpp # Manual transform replication (active/current)
+│       └── BoatAwareMovementComponent.h/.cpp  # Prevents character from pushing boat on collision
+├── Boat/
+│   └── GerstnerWaveGeneratorLayered.h/.cpp  # Multi-band Gerstner wave generator asset
+├── Variant_Platforming/
+├── Variant_Combat/
+└── Variant_SideScrolling/
+```
 
-The `Source/Water_Test/` directory contains three independent gameplay variants, each with its own GameMode, Character, PlayerController, and supporting classes:
+**Note**: `Source/Water_Test/NetworkedActors/CLAUDE.md` contains detailed implementation notes on the boat networking approach, water surface spring physics, commented-out features, and tuning properties — read it before touching boat code.
 
-### `Variant_Platforming/`
-Third-person platformer character (`APlatformingCharacter`) with:
-- Press-and-hold jump, double jump, wall jump (sphere trace), coyote time
-- Dash with AnimMontage and `AnimNotify_EndDash`
-- All input actions exposed as `Do*()` BlueprintCallable virtuals for UI or interface control
+## Active Boat System (`ABoatNetworkedInterpAll`)
 
-### `Variant_Combat/`
-Third-person melee combat character (`ACombatCharacter`) implementing `ICombatAttacker` and `ICombatDamageable`:
-- Combo attack string driven by AnimMontage sections (`ComboSectionNames`)
-- Press-and-hold charged attack with loop section
-- Attack tracing via `AnimNotify_DoAttackTrace`, combo gating via `AnimNotify_CheckCombo`, charged hold check via `AnimNotify_CheckChargedAttack`
-- HP, ragdoll-on-death, respawn timer
-- `CombatLifeBar` UMG widget rendered as a `UWidgetComponent` on the character
-- AI: `CombatAIController` + `CombatEnemy` (enemy character), `CombatEnemySpawner`, StateTree-based behavior via `CombatStateTreeUtility`
-- EQS: `EnvQueryContext_Player` and `EnvQueryContext_Danger` for enemy targeting
-- Gameplay volumes: `CombatActivationVolume`, `CombatCheckpointVolume`, `CombatLavaFloor`
-- Interface hierarchy: `ICombatActivatable`, `ICombatAttacker`, `ICombatDamageable`
+The current boat being developed. Physics runs **server-only**; clients receive replicated `ServerTransform` and interpolate.
 
-### `Variant_SideScrolling/`
-Side-scrolling character (`ASideScrollingCharacter`) with:
-- Constrained axis movement, wall jump, double jump, coyote time
-- Soft platform drop-through (custom collision channel `SoftCollisionObjectType`)
-- Interact system via `ISideScrollingInteractable` interface; sphere-overlap interaction check
-- `SideScrollingCameraManager` for camera management
-- AI: `SideScrollingAIController` + `SideScrollingNPC`, StateTree via `SideScrollingStateTreeUtility`
-- Gameplay actors: `SideScrollingJumpPad`, `SideScrollingMovingPlatform`, `SideScrollingPickup`, `SideScrollingSoftPlatform`
-- `SideScrollingUI` UMG widget
+**Boat driving flow:**
+1. Player walks into `DrivingTrigger` (BoxComponent on boat) → overlap event fires
+2. Player presses Enter/Exit key → `AWater_TestCharacter::DoEnterExitBoat()` → `ServerEnterBoat()` RPC
+3. Server calls `ABoatNetworkedInterpAll::SetDriver()`, sets `ControlledBoat` on character
+4. Character move input → `DoDriveBoat(Throttle, Steering)` → `ServerDriveBoat()` RPC → `ApplyDrivingInput()` on boat
+5. Player leaves trigger zone → `CheckDriverInZone()` calls `ServerExitBoat()` on character
 
-### `Boat/`
-- `ABoatNetworked` / `ABoatNetworkedInterpAll`: Physics-driven boat actors using a split physics/visual mesh with interpolation and physics clamping (Water + Buoyancy plugin integration)
-- `AWater_TestGameMode` / `AWater_TestCharacter` / `AWater_TestPlayerController`: Base/default classes
+**Wave surface**: `OceanBody` must be assigned in editor. Spring-damper force pulls boat toward wave height each tick (`SurfaceSpringStrength`, `SurfaceVerticalDamping`). Never enable `SetSimulatePhysics(true)` on a client — causes desync.
+
+**`UBoatAwareMovementComponent`**: Overrides `ApplyImpactPhysicsForces` to prevent the character's movement component from shoving the boat mesh on collision. Used by `AWater_TestCharacter`.
+
+**`UGerstnerWaveGeneratorLayered`**: Custom wave generator asset with independent spectral bands (swell, secondary swell, chop, ripple). Assign as the Generator on a `UGerstnerWaterWaves` asset. Each `FWaveLayerConfig` has its own seed offset so bands don't interfere.
+
+**`AReplicatedPhysicsObject`**: Base class for any networked physics prop (boxes, crates, barrels). Replicates `ServerTransform` via `OnRep_ServerTransform`; clients interpolate toward it.
 
 ## Key Design Patterns
 
-- **Input abstraction**: Every variant character exposes `Do*()` BlueprintCallable virtual methods that mirror the raw input handlers. This allows Blueprint UI widgets to drive the same code paths as hardware input.
-- **AnimNotify-driven gameplay**: Combat timing (attack traces, combo windows, charged attack checks) is entirely driven by AnimNotify classes rather than timers, keeping animation and logic in sync.
-- **StateTree AI**: Both Combat and SideScrolling variants use UE5 StateTree for enemy AI behavior, with custom `*StateTreeUtility` task/evaluator classes.
-- **Interface-based damage**: Combat damageable actors implement `ICombatDamageable`; attackers implement `ICombatAttacker`. This decouples enemies, the player, and props (e.g., `CombatDamageable Box`, `CombatDummy`).
+- **`Do*()` input abstraction**: Every character exposes `BlueprintCallable` virtual `Do*()` methods mirroring raw input handlers, so Blueprint UI widgets and hardware input share the same code path.
+- **Server-only physics + client interpolation**: All physics simulation runs on the server. Clients set physics off, receive replicated transform, and lerp visuals. Pattern used by both boat classes and `AReplicatedPhysicsObject`.
+- **AnimNotify-driven gameplay**: Combat timing (attack traces, combo windows, charged attack) is driven entirely by AnimNotify classes, not timers.
+- **StateTree AI**: Combat and SideScrolling variants use UE5 StateTree with custom `*StateTreeUtility` task/evaluator classes.
+- **Interface-based damage**: `ICombatDamageable` / `ICombatAttacker` decouple the player, enemies, and props.
 
-## Module Dependencies
+## Module Dependencies (`Water_Test.Build.cs`)
 
-Declared in `Source/Water_Test/Water_Test.Build.cs`:
-- Public: `Core`, `CoreUObject`, `Engine`, `InputCore`, `EnhancedInput`, `AIModule`, `StateTreeModule`, `GameplayStateTreeModule`, `UMG`, `Slate`, `Water`, `PhysicsCore`
-- All variant subdirectories are added to `PublicIncludePaths`, so headers can be included without path qualification.
+Public: `Core`, `CoreUObject`, `Engine`, `InputCore`, `EnhancedInput`, `AIModule`, `StateTreeModule`, `GameplayStateTreeModule`, `UMG`, `Slate`, `Water`, `PhysicsCore`
+
+`PublicIncludePaths` covers all variant subdirectories and `Water_Test/Boat`, so headers can be included without path qualification. `NetworkedActors/` is NOT in `PublicIncludePaths` — include with relative path (e.g. `#include "NetworkedActors/Boats/BoatAwareMovementComponent.h"`).
+
+## Prototype Variants (not part of the boat game)
+
+Three self-contained gameplay prototypes, each with its own GameMode/Character/PlayerController:
+
+- **`Variant_Platforming/`**: Third-person platformer — press-and-hold jump, double jump, wall jump (sphere trace), coyote time, dash with `AnimNotify_EndDash`
+- **`Variant_Combat/`**: Melee combat — combo string via AnimMontage sections, charged attack, HP/ragdoll/respawn, UMG life bar as `UWidgetComponent`, StateTree AI enemies, EQS targeting
+- **`Variant_SideScrolling/`**: Side-scroller — constrained axis, drop-through soft platforms (custom `SoftCollisionObjectType` channel), interact system via `ISideScrollingInteractable`, StateTree AI NPCs
